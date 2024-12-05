@@ -22,7 +22,7 @@ export const LANGUAGE_VERSIONS = {
   go: '1.20.3'
 };
 
-// Additional mapping to help with file extensions and potential runtime names
+
 export const LANGUAGE_CONFIGS = {
   javascript: { 
     extension: 'js', 

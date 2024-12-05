@@ -1,47 +1,59 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
-// Create the context
 const AuthContext = createContext();
 
-// AuthProvider component to manage authentication state
 const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    console.log(storedToken);
+
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setAuthState(JSON.parse(storedUser));
+    
+    if (storedToken && storedUser) {
+      setAuthState({
+        token: storedToken,
+        user: JSON.parse(storedUser)
+      });
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    console.log('Auth State:', authState);
-  }, [authState]);
-
-  const login = (userData) => {
-    setAuthState(userData);
+  const login = (userData, token) => {
+    const authData = {
+      user: userData,
+      token: token
+    };
+    
+    setAuthState(authData);
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', token);
   };
 
   const logout = () => {
     setAuthState(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   if (loading) {
-    return null;
+    return null; // or a loading spinner
   }
 
   return (
-    <AuthContext.Provider value={{ authState, login, logout }}>
+    <AuthContext.Provider value={{ 
+      authState, 
+      login, 
+      logout,
+      isAuthenticated: !!authState?.token 
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the AuthContext
 export const useAuth = () => {
   return useContext(AuthContext);
 };

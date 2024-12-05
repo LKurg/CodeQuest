@@ -68,12 +68,15 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/users/login', formData);
   
-      if (response.data) {
-        // Store token or user info in localStorage if needed
-        localStorage.setItem('user', JSON.stringify(response.data));
-
-        // Call the login function to update context
-        login(response.data);  // Update context with the logged-in user
+      if (response.data && response.data.token) {
+        // Extract user data (typically excluding sensitive information)
+        const userData = {
+          email: formData.email,
+          // Add any other non-sensitive user information you want to store
+        };
+  
+        // Call the login function to update context with user data and token
+        login(userData, response.data.token);
         
         // Redirect to dashboard or other page
         navigate('/dashboard');

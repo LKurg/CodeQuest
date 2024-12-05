@@ -27,6 +27,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
+
 //app.use('/api/quests', questRoutes);
 
 // Global error handling middleware

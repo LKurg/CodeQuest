@@ -13,10 +13,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Navigation from '../Layout/Navigation';
 import Editor from '@monaco-editor/react';
-
-
 import ContentRenderer from '../components/ContentRenderer';
 
+import PythonQuiz from '../components/PythonQuize';
 
 const ProgressTracker = ({ xp, completedLessons, totalLessons }) => {
   const progressPercentage = (completedLessons.length / totalLessons) * 100;
@@ -43,7 +42,6 @@ const ProgressTracker = ({ xp, completedLessons, totalLessons }) => {
   );
 };
 
-// Code Challenge Component
 const CodeChallenge = ({ lesson, onSuccess }) => {
   const [code, setCode] = useState(lesson?.challenge?.starterCode || '');
   const [output, setOutput] = useState('');
@@ -149,7 +147,6 @@ const CodeChallenge = ({ lesson, onSuccess }) => {
   );
 };
 
-// Main Course Tutorial Component
 function CourseTutorial() {
   const { courseId } = useParams();
   const [courseData, setCourseData] = useState(null);
@@ -158,24 +155,34 @@ function CourseTutorial() {
   const [completedLessons, setCompletedLessons] = useState([]);
   const [xp, setXp] = useState(0);
   const [error, setError] = useState(null);
+  const [isQuizMode, setIsQuizMode] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
 
   useEffect(() => {
     const fetchCourseData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/courses/${courseId}`);
-        
+        const token = localStorage.getItem('token'); 
+     
+  
+        const response = await fetch(`http://localhost:5000/api/courses/${courseId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`, // Add the token here
+          },
+        });
+  
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
   
         const data = await response.json();
         setCourseData(data);
-
-        // Automatically select first section and lesson
+  
         if (data?.sections?.length > 0) {
           const firstSection = data.sections[0];
           setActiveSection(firstSection._id);
-
+  
           if (firstSection.lessons?.length > 0) {
             setActiveLesson(firstSection.lessons[0]._id);
           }
@@ -189,11 +196,26 @@ function CourseTutorial() {
   
     fetchCourseData();
   }, [courseId]);
+  
 
   const handleLessonSuccess = () => {
     setXp(prevXp => prevXp + 100);
     if (activeLesson && !completedLessons.includes(activeLesson)) {
       setCompletedLessons(prev => [...prev, activeLesson]);
+    }
+  };
+
+  const handleQuizComplete = (score) => {
+    setXp(prevXp => prevXp + score);
+    setIsQuizMode(false);
+    if (activeSection && courseData.sections) {
+      const currentSectionIndex = courseData.sections.findIndex(s => s._id === activeSection);
+      if (currentSectionIndex < courseData.sections.length - 1) {
+        setActiveSection(courseData.sections[currentSectionIndex + 1]._id);
+        if (courseData.sections[currentSectionIndex + 1].lessons?.length > 0) {
+          setActiveLesson(courseData.sections[currentSectionIndex + 1].lessons[0]._id);
+        }
+      }
     }
   };
 
@@ -209,7 +231,6 @@ function CourseTutorial() {
     const lesson = getActiveLessonDetails();
     if (!lesson) return null;
 
-    // Parse description as first content item
     const contents = lesson.description 
       ? [{ type: 'text', text: lesson.description }] 
       : (lesson.contents || []);
@@ -239,7 +260,6 @@ function CourseTutorial() {
     );
   };
 
-  // Loading and error states
   if (!courseData) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -259,7 +279,6 @@ function CourseTutorial() {
     );
   }
 
-  // Validate course data
   if (!courseData.sections || courseData.sections.length === 0) {
     return <div className="text-center py-10 text-xl">No course content available</div>;
   }
@@ -269,7 +288,6 @@ function CourseTutorial() {
   return (
     <Navigation>
       <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar */}
         <div className="w-64 bg-white border-r p-6 overflow-auto">
           <div className="flex flex-col mb-8">
             <div className="flex items-center mb-4">
@@ -331,12 +349,27 @@ function CourseTutorial() {
           ))}
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-6 bg-white overflow-auto">
-          {activeLesson ? renderLessonContent() : (
-            <div className="text-center text-gray-500 flex items-center justify-center h-full">
-              <p className="text-xl">Please select a lesson to begin!</p>
-            </div>
+        <div className="flex-1 p-6 bg-white overflow-auto relative">
+          {isQuizMode ? (
+            <PythonQuiz onQuizComplete={handleQuizComplete} />
+          ) : (
+            <>
+              {activeLesson ? renderLessonContent() : (
+                <div className="text-center text-gray-500 flex items-center justify-center h-full">
+                  <p className="text-xl">Please select a lesson to begin!</p>
+                </div>
+              )}
+
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                <button 
+                  onClick={() => setIsQuizMode(true)}
+                  className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
+                >
+                  <FontAwesomeIcon icon={faCode} className="mr-2" />
+                  Take Python Quiz
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -20,7 +20,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/courses" element={<Courses />} />
-        <Route path="/dashboard/course/learn/:courseId" element={<CourseTutorial />} />
+        <Route path="/course/learn/:courseId" element={<CourseTutorial />} />
 
         <Route path='/admin/create-tutorial' element={<CreateCourse/>}/>
       </Routes>
