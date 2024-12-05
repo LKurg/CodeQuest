@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhp } from '@fortawesome/free-brands-svg-icons';
@@ -7,145 +7,14 @@ import {
   faStar, 
   faLock, 
   faCode, 
-  faImage, 
   faBookOpen, 
-  faChalkboardTeacher 
+  faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import Navigation from '../Layout/Navigation';
-import Editor from '@monaco-editor/react';
 import ContentRenderer from '../components/ContentRenderer';
-
 import PythonQuiz from '../components/PythonQuize';
-
-const ProgressTracker = ({ xp, completedLessons, totalLessons }) => {
-  const progressPercentage = (completedLessons.length / totalLessons) * 100;
-
-  return (
-    <div className="bg-white rounded-lg p-4 shadow-md">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <FontAwesomeIcon icon={faStar} className="text-yellow-500 mr-2" />
-          <span className="font-bold text-lg">{xp} XP</span>
-        </div>
-        <div className="flex items-center">
-          <FontAwesomeIcon icon={faCheckCircle} className="text-green-500 mr-2" />
-          <span>{completedLessons.length} / {totalLessons} Lessons</span>
-        </div>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2.5">
-        <div
-          className="bg-teal-600 h-2.5 rounded-full transition-all duration-500"
-          style={{ width: `${progressPercentage}%` }}
-        ></div>
-      </div>
-    </div>
-  );
-};
-
-const CodeChallenge = ({ lesson, onSuccess }) => {
-  const [code, setCode] = useState(lesson?.challenge?.starterCode || '');
-  const [output, setOutput] = useState('');
-  const [isCorrect, setIsCorrect] = useState(null);
-  const [showHints, setShowHints] = useState(false);
-  const editorRef = useRef(null);
-
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-  };
-
-  const runCode = () => {
-    try {
-      if (!lesson?.challenge?.testCases) {
-        setOutput('No test cases available');
-        return;
-      }
-
-      const testResults = lesson.challenge.testCases.map(testCase => {
-        const testFunction = new Function(
-          ...testCase.input.map((_, i) => `arg${i}`), 
-          `return (${code})(...arguments)`
-        );
-
-        const result = testFunction(...testCase.input);
-        return result === testCase.expectedOutput;
-      });
-
-      const allTestsPassed = testResults.every(result => result);
-      setIsCorrect(allTestsPassed);
-
-      if (allTestsPassed) {
-        onSuccess();
-        setOutput('All tests passed successfully!');
-      } else {
-        setOutput('Some test cases failed. Keep trying!');
-      }
-    } catch (error) {
-      setOutput(`Error: ${error.message}`);
-      setIsCorrect(false);
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-lg p-6 shadow-md">
-      <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-        <FontAwesomeIcon icon={faCode} className="mr-2 text-teal-600" />
-        Coding Challenge
-      </h3>
-      <p className="mb-4 text-gray-600">{lesson.challenge?.prompt || 'No challenge prompt available'}</p>
-      
-      <div className="mb-4 h-64">
-        <Editor
-          theme="vs-dark"
-          defaultLanguage="php"
-          value={code}
-          onChange={(value) => setCode(value || '')}
-          onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-          }}
-        />
-      </div>
-      
-      <div className="flex space-x-4 mb-4">
-        <button 
-          onClick={runCode}
-          className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition duration-300"
-        >
-          Run Code
-        </button>
-        <button 
-          onClick={() => setShowHints(!showHints)}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-        >
-          {showHints ? 'Hide Hints' : 'Show Hints'}
-        </button>
-      </div>
-      
-      {showHints && lesson.challenge?.hints && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-4">
-          <h4 className="font-bold mb-2 flex items-center">
-            <FontAwesomeIcon icon={faBookOpen} className="mr-2 text-blue-600" />
-            Hints
-          </h4>
-          <ul className="list-disc list-inside">
-            {lesson.challenge.hints.map((hint, index) => (
-              <li key={index} className="text-blue-800">{hint}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {isCorrect !== null && (
-        <div className={`mt-4 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-          {isCorrect 
-            ? 'Congratulations! All tests passed!' 
-            : 'Oops, some tests failed. Keep trying!'}
-        </div>
-      )}
-    </div>
-  );
-};
+import ProgressTracker from '../components/ProgressTracker';
+import CodeChallenge from '../components/CodeChallenge';
 
 function CourseTutorial() {
   const { courseId } = useParams();
@@ -156,48 +25,58 @@ function CourseTutorial() {
   const [xp, setXp] = useState(0);
   const [error, setError] = useState(null);
   const [isQuizMode, setIsQuizMode] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
+  const [userProgress, setUserProgress] = useState(null);
 
   useEffect(() => {
-    const fetchCourseData = async () => {
-      try {
-        const token = localStorage.getItem('token'); 
-     
-  
-        const response = await fetch(`http://localhost:5000/api/courses/${courseId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`, // Add the token here
-          },
-        });
-  
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    const fetchData = async () => {
+        const token = localStorage.getItem('token');
+        
+        try {
+            const [progressResponse, courseResponse] = await Promise.all([
+                fetch(`http://localhost:5000/api/users/progress/${courseId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }),
+            
+                fetch(`http://localhost:5000/api/courses/${courseId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                })
+            ]);
+    
+            const progressData = await progressResponse.json();
+            const courseData = await courseResponse.json();
+    
+            setCourseData(courseData);
+            setUserProgress(progressData);
+            console.log(progressData);
+    
+            // Use completedLessons from backend directly
+            setCompletedLessons(progressData.completedLessons || []);
+    
+            // Set initial section and lesson based on backend progress
+            const defaultSection = courseData.sections[0]?._id;
+            const progressSection = progressData?.currentSection || defaultSection;
+            setActiveSection(progressSection);
+    
+            const activeSectionLessons = courseData.sections
+                .find(section => section._id === progressSection)?.lessons;
+            
+            if (activeSectionLessons?.length) {
+                setActiveLesson(activeSectionLessons[0]._id);
+            }
+    
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setError('Failed to load course content');
         }
-  
-        const data = await response.json();
-        setCourseData(data);
-  
-        if (data?.sections?.length > 0) {
-          const firstSection = data.sections[0];
-          setActiveSection(firstSection._id);
-  
-          if (firstSection.lessons?.length > 0) {
-            setActiveLesson(firstSection.lessons[0]._id);
-          }
-        }
-  
-      } catch (error) {
-        console.error('Error fetching course data:', error);
-        setError('Failed to load course content');
-      }
     };
+    
+    fetchData();
+}, [courseId]);
   
-    fetchCourseData();
-  }, [courseId]);
-  
-
   const handleLessonSuccess = () => {
     setXp(prevXp => prevXp + 100);
     if (activeLesson && !completedLessons.includes(activeLesson)) {
@@ -205,18 +84,68 @@ function CourseTutorial() {
     }
   };
 
+  const progressToNextSection = () => {
+    if (!courseData?.sections) return;
+
+    const currentSectionIndex = courseData.sections.findIndex(s => s._id === activeSection);
+    const currentLessonIndex = courseData.sections[currentSectionIndex].lessons
+      .findIndex(l => l._id === activeLesson);
+
+    // Check if there are more lessons in the current section
+    if (currentLessonIndex < courseData.sections[currentSectionIndex].lessons.length - 1) {
+      // Move to next lesson in the same section
+      setActiveLesson(courseData.sections[currentSectionIndex].lessons[currentLessonIndex + 1]._id);
+    } else if (currentSectionIndex < courseData.sections.length - 1) {
+      // Move to next section
+      const nextSection = courseData.sections[currentSectionIndex + 1];
+      setActiveSection(nextSection._id);
+      
+      // Set the first lesson of the next section
+      if (nextSection.lessons?.length > 0) {
+        setActiveLesson(nextSection.lessons[0]._id);
+      }
+    }
+  };
+
+  const handleNextButton = async () => {
+    handleLessonSuccess();
+
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Determine if all lessons in the current section are completed
+        const currentSectionLessons = courseData.sections
+            .find(section => section._id === activeSection)?.lessons || [];
+        
+        const completedSectionsArray = 
+            currentSectionLessons.every(lesson => completedLessons.includes(lesson._id)) 
+                ? [activeSection.toString()] 
+                : [];
+
+        await fetch('http://localhost:5000/api/users/progress', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                courseId,
+                currentSection: activeSection.toString(),
+                completedSections: completedSectionsArray,
+                completedLessons: [activeLesson.toString()]
+            })
+        });
+    } catch (error) {
+        console.error('Error updating progress:', error);
+    }
+
+    progressToNextSection();
+};
+
   const handleQuizComplete = (score) => {
     setXp(prevXp => prevXp + score);
     setIsQuizMode(false);
-    if (activeSection && courseData.sections) {
-      const currentSectionIndex = courseData.sections.findIndex(s => s._id === activeSection);
-      if (currentSectionIndex < courseData.sections.length - 1) {
-        setActiveSection(courseData.sections[currentSectionIndex + 1]._id);
-        if (courseData.sections[currentSectionIndex + 1].lessons?.length > 0) {
-          setActiveLesson(courseData.sections[currentSectionIndex + 1].lessons[0]._id);
-        }
-      }
-    }
+    progressToNextSection();
   };
 
   const getActiveLessonDetails = () => {
@@ -256,6 +185,16 @@ function CourseTutorial() {
             onSuccess={handleLessonSuccess} 
           />
         )}
+
+        <div className="mt-6 flex justify-end">
+          <button 
+            onClick={handleNextButton}
+            className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
+          >
+            Next Lesson
+            <FontAwesomeIcon icon={faArrowRight} className="ml-2" />
+          </button>
+        </div>
       </div>
     );
   };
@@ -303,50 +242,66 @@ function CourseTutorial() {
             <ProgressTracker 
               xp={xp} 
               completedLessons={completedLessons}
-              totalLessons={totalLessons} 
+              totalLessons={totalLessons}
+              userProgress={userProgress} 
             />
           </div>
 
           {courseData.sections.map((section) => (
-            <div key={section._id} className="mb-6">
-              <div 
-                onClick={() => setActiveSection(section._id)}
-                className={`cursor-pointer p-3 rounded-lg transition duration-300 ${
-                  activeSection === section._id 
-                    ? 'bg-teal-100 text-teal-800' 
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                <h3 className="font-semibold">{section.title}</h3>
-              </div>
+  <div key={section._id} className="mb-6">
+    <div 
+      onClick={() => setActiveSection(section._id)}
+      className={`cursor-pointer p-3 rounded-lg transition duration-300 ${
+        activeSection === section._id 
+          ? 'bg-teal-100 text-teal-800' 
+          : 'hover:bg-gray-100'
+      }`}
+    >
+      <h3 className="font-semibold">{section.title}</h3>
+    </div>
 
-              {activeSection === section._id && (
-                <div className="mt-2 space-y-2">
-                  {section.lessons.map((lesson) => (
-                    <div 
-                      key={lesson._id} 
-                      onClick={() => setActiveLesson(lesson._id)}
-                      className={`flex items-center p-2 rounded-lg cursor-pointer transition duration-300 ${
-                        activeLesson === lesson._id 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <FontAwesomeIcon 
-                        icon={completedLessons.includes(lesson._id) ? faCheckCircle : faLock}
-                        className={`mr-2 transition duration-300 ${
-                          completedLessons.includes(lesson._id) 
-                            ? 'text-green-500' 
-                            : 'text-gray-400'
-                        }`}
-                      />
-                      <span>{lesson.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+    {activeSection === section._id && (
+      <div className="mt-2 space-y-2">
+        {section.lessons.map((lesson, index) => {
+          // Determine if lesson should be unlocked
+          const isUnlocked = 
+            index === 0 || // First lesson always unlocked
+            completedLessons.includes(section.lessons[index - 1]._id);
+
+          return (
+            <div 
+              key={lesson._id} 
+              onClick={() => isUnlocked && setActiveLesson(lesson._id)}
+              className={`flex items-center p-2 rounded-lg transition duration-300 ${
+                !isUnlocked 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'cursor-pointer hover:bg-gray-100'
+              } ${
+                activeLesson === lesson._id 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : ''
+              }`}
+            >
+              <FontAwesomeIcon 
+                icon={
+                  completedLessons.includes(lesson._id) 
+                    ? faCheckCircle 
+                    : (isUnlocked ? faStar : faLock)
+                }
+                className={`mr-2 transition duration-300 ${
+                  completedLessons.includes(lesson._id) 
+                    ? 'text-green-500' 
+                    : (isUnlocked ? 'text-yellow-500' : 'text-gray-400')
+                }`}
+              />
+              <span>{lesson.title}</span>
             </div>
-          ))}
+          );
+        })}
+      </div>
+    )}
+  </div>
+))}
         </div>
 
         <div className="flex-1 p-6 bg-white overflow-auto relative">
