@@ -3,10 +3,12 @@ const mongoose = require('mongoose');
 // Progress schema
 const ProgressSchema = new mongoose.Schema({
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-    currentSection: { type: Number, default: 0 },
-    completedSections: [Number], 
-    lastAccessed: { type: Date, default: Date.now },
-});
+    currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }, // Track the current lesson
+    completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }], // Array of completed lessons
+    lastAccessed: { type: Date, default: Date.now }, // Timestamp of the last access
+  });
+  
+
 
 // Quiz results schema
 const QuizResultSchema = new mongoose.Schema({
@@ -25,10 +27,12 @@ const StreakSchema = new mongoose.Schema({
 const EnrolledCourseSchema = new mongoose.Schema({
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     progress: {
-        sectionsCompleted: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Section' }], // Tracks completed sections
-        isEnrolled: { type: Boolean, default: false },
+      completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }], // Tracks completed lessons
+      currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }, // Current lesson being viewed
     },
-});
+    isEnrolled: { type: Boolean, default: false },
+  });
+  
 
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },

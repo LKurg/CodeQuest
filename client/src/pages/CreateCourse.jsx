@@ -80,48 +80,50 @@ const CreateCourse = () => {
   };
 
   const saveCourse = async () => {
-    // Validate course before submission
     if (!course.title.trim()) {
       setErrorMessage("Course title is required");
       return;
     }
-
+  
     setLoading(true);
-    setSuccessMessage(""); // Clear any previous success messages
-    setErrorMessage(""); // Clear any previous error messages
-
+    setSuccessMessage("");
+    setErrorMessage("");
+  
     try {
-      // Use axios for more comprehensive error handling
+      // Retrieve the token from storage or state
+      const token = localStorage.getItem("token"); // Adjust based on your app's token storage strategy
+  
+      if (!token) {
+        setErrorMessage("Authentication token is missing. Please log in again.");
+        setLoading(false);
+        return;
+      }
+  
       const response = await axios.post("http://localhost:5000/api/courses", course, {
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add the token here
         },
       });
-
-      // Clear the form after successful submission
+  
       setCourse({
         title: "",
         description: "",
         sections: [],
       });
-
-      // Set success message with returned course data
+  
       setSuccessMessage(`Course "${response.data.title}" created successfully!`);
-      
-      // Optional: You might want to add a way to redirect or refresh the course list
       console.log("Saved course:", response.data);
     } catch (error) {
-      // More detailed error handling
-      const errorMsg = error.response?.data?.message || 
-                       error.message || 
-                       "An unexpected error occurred";
+      const errorMsg =
+        error.response?.data?.message || error.message || "An unexpected error occurred";
       setErrorMessage(errorMsg);
       console.error("Error saving course:", error);
     } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-4 flex items-center">

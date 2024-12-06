@@ -5,6 +5,9 @@ const jwt = require('jsonwebtoken');
 const Course = require('../models/Course');
 const authMiddleware = require('../middleware/auth');
 require('dotenv').config();
+const mongoose = require('mongoose');
+
+
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -122,49 +125,71 @@ router.post('/logout', (req, res, next) => {
         next(error); // Pass errors to the global error handler
     }
 });
-
-// Update user progress
-router.post('/progress', async (req, res, next) => {
-    const { userId, courseId, currentSection, completedSections } = req.body;
-
+router.post('/progress', authMiddleware, async (req, res, next) => {
+    const userId = req.user.id; // Extract user ID from authMiddleware
+    const { courseId, currentLesson, completedLessons } = req.body;
+  
     try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        // Find existing progress for the course
-        const progress = user.progress.find((p) => p.courseId.toString() === courseId);
-        if (progress) {
-            progress.currentSection = currentSection;
-            progress.completedSections = completedSections;
-            progress.lastAccessed = new Date();
-        } else {
-            user.progress.push({ courseId, currentSection, completedSections });
-        }
-
-        await user.save();
-        res.status(200).json({ message: 'Progress updated successfully', progress: user.progress });
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+  
+      // Convert IDs to ObjectId for consistency
+      const currentLessonObjectId = new mongoose.Types.ObjectId(currentLesson);
+      const completedLessonsObjectIds = completedLessons.map(id => new mongoose.Types.ObjectId(id));
+  
+      // Check if progress exists for the course
+      const progress = user.progress.find(p => p.courseId.toString() === courseId);
+  
+      if (progress) {
+        // Update existing progress
+        progress.currentLesson = currentLessonObjectId;
+        progress.completedLessons = Array.from(
+          new Set([...progress.completedLessons.map(id => id.toString()), ...completedLessonsObjectIds])
+        ); // Avoid duplicate lesson entries
+        progress.lastAccessed = new Date();
+      } else {
+        // Create new progress for the course
+        user.progress.push({
+          courseId,
+          currentLesson: currentLessonObjectId,
+          completedLessons: completedLessonsObjectIds,
+        });
+      }
+  
+      // Save the updated user progress
+      await user.save();
+  
+      res.status(200).json({ message: 'Progress updated successfully', progress: user.progress });
     } catch (error) {
-        next(error);
+      next(error); // Pass errors to global error handler
     }
-});
-
-// Get progress of a user for a specific course
-router.get('/progress/:userId/:courseId', async (req, res, next) => {
-    const { userId, courseId } = req.params;
-
+  });
+  
+  router.get('/progress/:courseId', authMiddleware, async (req, res, next) => {
+    const userId = req.user.id; // Extract user ID from authMiddleware
+    const { courseId } = req.params; // Extract course ID from URL params
+  
     try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        const progress = user.progress.find((p) => p.courseId.toString() === courseId);
-        if (!progress) return res.status(404).json({ error: 'Progress not found' });
-
-        res.status(200).json(progress);
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+  
+      // Find progress for the specified course
+      const existingProgress = user.progress.find((p) => p.courseId.toString() === courseId);
+  
+      // If no progress exists, return a default progress object
+      const progress = existingProgress || {
+        courseId,
+        currentLesson: null, // Default for current lesson
+        completedLessons: [], // Default for completed lessons
+        lastAccessed: null, // Optional: add default lastAccessed
+      };
+  
+      res.status(200).json(progress);
     } catch (error) {
-        next(error);
+      next(error); // Pass errors to global error handler
     }
-});
-
+  });
+  
 // Save quiz results
 router.post('/quiz-results', async (req, res, next) => {
     const { userId, courseId, quizId, score } = req.body;
