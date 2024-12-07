@@ -110,5 +110,53 @@ router.delete("/:id", authMiddleware, async (req, res, next) => {
      next(error);
    }
 });
+router.get("/:courseId/sections", authMiddleware, async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.courseId).populate({
+      path: "sections.lessons.quiz", // Populate quiz data for each lesson
+      select: "title description", // Select relevant quiz fields
+    });
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found." });
+    }
+
+    const sections = course.sections; // Extract sections from the course
+    res.status(200).json(sections); // Return only sections (without the full course details)
+  } catch (error) {
+    console.error('Error fetching sections:', error);
+    res.status(500).json({ message: 'Error fetching sections', error: error.message });
+  }
+});
+
+router.get("/:courseId/sections/:sectionId/lessons", authMiddleware, async (req, res) => {
+
+
+  try {
+    const { courseId, sectionId } = req.params;
+
+    // Find the course by ID
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found." });
+    }
+
+    // Find the section by ID within the course
+    const section = course.sections.id(sectionId);
+
+    if (!section) {
+      return res.status(404).json({ message: "Section not found." });
+    }
+
+    // Return the lessons of the found section
+    res.status(200).json(section.lessons);
+  } catch (error) {
+    console.error('Error fetching lessons:', error);
+    res.status(500).json({ message: 'Error fetching lessons', error: error.message });
+  }
+});
+
+
 
 module.exports = router;

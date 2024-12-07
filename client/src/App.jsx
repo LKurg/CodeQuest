@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard';
 import Courses from './pages/Courses';
 import CourseTutorial from './pages/CourseTutorial';
 import CreateCourse from './pages/CreateCourse';
+import CreateQuize from './pages/CreateQuize';
+
+import Quiz from './components/Quiz';
 
 function App() {
   return (
@@ -23,6 +26,8 @@ function App() {
         <Route path="/course/learn/:courseId" element={<CourseTutorial />} />
 
         <Route path='/admin/create-tutorial' element={<CreateCourse/>}/>
+        <Route path='/admin/create-quize' element={<CreateQuize/>}/>
+        <Route path="/course/quize/:courseId/:lessonId" element={<Quiz />} />
       </Routes>
     </Router>
   );

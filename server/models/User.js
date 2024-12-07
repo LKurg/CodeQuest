@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const authMiddleware = require('../middleware/auth');
 
 // Progress schema
 const ProgressSchema = new mongoose.Schema({

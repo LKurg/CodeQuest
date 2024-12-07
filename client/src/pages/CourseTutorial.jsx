@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams,useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhp } from '@fortawesome/free-brands-svg-icons';
 import { 
@@ -12,9 +12,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Navigation from '../Layout/Navigation';
 import ContentRenderer from '../components/ContentRenderer';
-import PythonQuiz from '../components/PythonQuize';
+
 import ProgressTracker from '../components/ProgressTracker';
 import CodeChallenge from '../components/CodeChallenge';
+import TakeQuiz from '../components/Quiz';
 
 function CourseTutorial() {
   const { courseId } = useParams();
@@ -26,6 +27,7 @@ function CourseTutorial() {
   const [error, setError] = useState(null);
   const [isQuizMode, setIsQuizMode] = useState(false);
   const [userProgress, setUserProgress] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,7 +78,11 @@ function CourseTutorial() {
     
     fetchData();
 }, [courseId]);
-  
+const handleTakeQuiz = () => {
+  navigate(`/course/quize/${courseId}/${activeLesson}`);
+
+};
+
   const handleLessonSuccess = () => {
     setXp(prevXp => prevXp + 100);
     if (activeLesson && !completedLessons.includes(activeLesson)) {
@@ -306,7 +312,10 @@ function CourseTutorial() {
 
         <div className="flex-1 p-6 bg-white overflow-auto relative">
           {isQuizMode ? (
-            <PythonQuiz onQuizComplete={handleQuizComplete} />
+            <TakeQuiz 
+            activeLesson={activeLesson.toString()} 
+            onQuizComplete={handleQuizComplete} 
+          />
           ) : (
             <>
               {activeLesson ? renderLessonContent() : (
@@ -316,13 +325,13 @@ function CourseTutorial() {
               )}
 
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                <button 
-                  onClick={() => setIsQuizMode(true)}
-                  className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
-                >
-                  <FontAwesomeIcon icon={faCode} className="mr-2" />
-                  Take Python Quiz
-                </button>
+              <button 
+      onClick={handleTakeQuiz}
+      className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
+    >
+      <FontAwesomeIcon icon={faCode} className="mr-2" />
+      Take  Quiz
+    </button>
               </div>
             </>
           )}

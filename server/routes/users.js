@@ -12,8 +12,6 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Log the value of JWT_SECRET to ensure it's being loaded correctly
-console.log('JWT_SECRET:', JWT_SECRET);
 
 // Register a new user
 router.post('/register', async (req, res, next) => {
@@ -105,8 +103,8 @@ router.post('/login', async (req, res, next) => {
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
-        // Log the payload before signing the token to verify it's correct
-        console.log('User Payload:', { id: user._id, email: user.email });
+       
+    
 
         // Sign the JWT token
         const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
@@ -249,6 +247,105 @@ router.get('/quiz-results/:userId/:courseId', async (req, res, next) => {
         next(error);
     }
 });
+router.get('/progress', authMiddleware, async (req, res) => {
+    try {
+        console.log('Request received to /progress');
+        const user = await User.findById(req.user.id);
+        if (!user) {
+          
+            return res.status(404).json({ error: 'User not found' });
+        }
+     
+
+        // Populate progress with full course, sections, and lessons
+        const populatedProgress = await Promise.all(user.progress.map(async (progress) => {
+            try {
+             
+
+                // Fetch course with sections and lessons
+                const course = await Course.findById(progress.courseId)
+                    .populate({
+                        path: 'sections',
+                        populate: {
+                            path: 'lessons'
+                        }
+                    });
+
+                if (!course) {
+                    console.log('Course not found for ID:', progress.courseId);
+                    return null;
+                }
+
+                console.log('Course found:', course.title);
+
+                // Calculate total lessons and completed lessons
+                const totalLessons = course.sections.reduce(
+                    (count, section) => count + section.lessons.length,
+                    0
+                );
+
+                const completedLessons = progress.completedLessons.length;
+
+                // Progress percentage
+                const progressPercentage = ((completedLessons / totalLessons) * 100).toFixed(2);
+
+                // Determine the next lesson
+                let nextLesson = null;
+                const completedLessonsSet = new Set(progress.completedLessons.map(id => id.toString()));
+
+                for (const section of course.sections) {
+                    for (const lesson of section.lessons) {
+                        if (!completedLessonsSet.has(lesson._id.toString())) {
+                            nextLesson = lesson;
+                            break;
+                        }
+                    }
+                    if (nextLesson) break;
+                }
+
+                return {
+                    courseId: course._id,
+                    courseTitle: course.title,
+                    totalLessons,
+                    completedLessons,
+                    progressPercentage,
+                    nextLesson: nextLesson
+                        ? {
+                              _id: nextLesson._id,
+                              title: nextLesson.title
+                          }
+                        : null, // No next lesson means course is fully completed
+                };
+            } catch (err) {
+                console.error('Error processing progress for courseId:', progress.courseId, err);
+                return null;
+            }
+        }));
+
+        // Filter out any null results
+        const filteredProgress = populatedProgress.filter(p => p !== null);
+      
+
+        res.status(200).json(filteredProgress);
+    } catch (error) {
+        console.error('Error fetching progress:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+  
+  // GET /api/users/progress
+  router.get('/profile', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Update streak (track consecutive days of activity)
 router.post('/streak', async (req, res, next) => {
@@ -293,5 +390,57 @@ router.get('/streak/:userId', async (req, res, next) => {
         next(error);
     }
 });
+
+router.get('/active-courses', authMiddleware, async (req, res) => {
+    try {
+      // Access the authenticated user's ID from the auth middleware
+      const userId = req.user._id;
+  
+      // Fetch user data with enrolled courses and related course details
+      const user = await User.findById(userId).populate({
+        path: "enrolledCourses.courseId", // Populate course details
+        populate: {
+          path: "sections.lessons", // Populate lessons within sections
+        },
+      });
+  
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      const activeCourses = user.enrolledCourses.map((course) => {
+        const completedLessons = course.progress?.completedLessons || [];
+        const allLessons =
+          course.courseId?.sections?.flatMap((section) => section.lessons) || [];
+  
+        const lastCompletedLesson =
+          completedLessons[completedLessons.length - 1]; // Latest completed lesson
+  
+        const currentProgressIndex = allLessons.indexOf(lastCompletedLesson) + 1;
+  
+        const currentProgress =
+          currentProgressIndex < allLessons.length
+            ? allLessons[currentProgressIndex]
+            : null; // Next lesson ID or null if all completed
+  
+        return {
+          courseId: course.courseId?._id || null,
+          courseTitle: course.courseId?.title || "Untitled",
+          currentProgress,
+          completedLessons,
+        };
+      });
+  
+      res.status(200).json({ activeCourses });
+    } catch (error) {
+      console.error("Error fetching active courses:", error);
+      res
+        .status(500)
+        .json({ message: "Error fetching active courses", error: error.message });
+    }
+  });
+  
+  
+  
 
 module.exports = router;

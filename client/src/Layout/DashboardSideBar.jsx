@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faBook, 
@@ -13,24 +13,90 @@ import { Link, useLocation } from 'react-router-dom';
 
 const DashboardSidebar = ({ children }) => {
   const location = useLocation();
-  
-  const activeCourses = [
-    {
-      id: 1,
-      title: 'Python Fundamentals',
-      progress: 65,
-      icon: '🐍',
-      currentSection: 'Functions and Modules'
-    },
-    {
-      id: 2,
-      title: 'React Web Development',
-      progress: 40,
-      icon: '⚛️',
-      currentSection: 'State Management'
-    }
-  ];
+  const [activeCourses, setActiveCourses] = useState([]);
+  const [userProgress, setUserProgress] = useState([]);
+  const [courseDetails, setCourseDetails] = useState({});
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch user's progress
+        const progressResponse = await fetch('http://localhost:5000/api/users/progress', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const progressData = await progressResponse.json();
+        setUserProgress(progressData);
+
+        // Prepare active courses with progress
+        const enrichedCourses = progressData
+          .map(progress => {
+            // Course details are now directly in the progress response
+            const course = {
+              _id: progress.courseId,
+              title: progress.courseTitle,
+              sections: [] // We'll add this if needed
+            };
+
+            // Find the current section 
+            const currentSection = progress.currentSection;
+            
+            // Determine the next lesson
+            const nextLesson = progress.nextLesson;
+
+            return {
+              id: course._id,
+              title: course.title || 'Unnamed Course',
+              progress: calculateCourseProgress(progress),
+              icon: getLanguageIcon(course.language), // You might need to modify how language is retrieved
+              currentSection: 'Current Section', // Update this based on your data structure
+              nextLesson: nextLesson 
+                ? nextLesson.title 
+                : 'Course Completed',
+              lastAccessed: progress.lastAccessed 
+                ? new Date(progress.lastAccessed) 
+                : new Date(0)
+            };
+          })
+          // Sort by most recently accessed
+          .sort((a, b) => b.lastAccessed - a.lastAccessed)
+          // Take only the top 2 courses
+          .slice(0, 2);
+
+        setActiveCourses(enrichedCourses);
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setError('Failed to load dashboard data');
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+
+const calculateCourseProgress = (progress) => {
+
+  return Math.round(progress.progressPercentage || 0);
+};
+
+  // Helper function to get language icon
+  const getLanguageIcon = (language) => {
+    const languageIcons = {
+      'Python': '🐍',
+      'JavaScript': '🟨',
+      'React': '⚛️',
+      'PHP': '🐘',
+      'Java': '☕',
+      'default': '📚'
+    };
+    return languageIcons[language] || languageIcons['default'];
+  };
+
+  // Sidebar items remain the same
   const sidebarItems = [
     { 
       icon: faBook, 
@@ -59,6 +125,14 @@ const DashboardSidebar = ({ children }) => {
     }
   ];
 
+  if (error) {
+    return (
+      <div className="text-red-600 p-4">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="flex">
       {/* Sidebar */}
@@ -77,7 +151,9 @@ const DashboardSidebar = ({ children }) => {
                 <span className="text-2xl mr-3">{course.icon}</span>
                 <div>
                   <h4 className="font-medium text-sm">{course.title}</h4>
-                  <p className="text-xs text-gray-500">{course.currentSection}</p>
+                  <p className="text-xs text-gray-500">
+                    Current Section | Next: {course.nextLesson}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center">
@@ -91,7 +167,7 @@ const DashboardSidebar = ({ children }) => {
                   ></div>
                 </div>
                 <Link 
-                  to={`/course/${course.id}`} 
+                  to={`/course/learn/${course.id}`} 
                   className="text-teal-600 hover:bg-teal-50 p-1 rounded"
                 >
                   <FontAwesomeIcon icon={faPlay} className="w-4 h-4" />
