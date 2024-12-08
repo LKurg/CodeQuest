@@ -1,5 +1,8 @@
 const express = require('express');
-const User = require('../models/User');
+const { User } = require('../models/User');
+
+
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Course = require('../models/Course');
@@ -335,7 +338,6 @@ function isConsecutiveDay(lastActivity) {
   );
 }
 
-// Login a user
 router.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
 
@@ -343,24 +345,46 @@ router.post('/login', async (req, res, next) => {
         // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
+            console.log(`Login attempt failed: No user found with email ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
         // Compare password with hashed password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
+            console.log(`Login attempt failed: Incorrect password for email ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
-       
-    
+        // Log successful login attempt
+        console.log(`Successful login for user: ${user.email}, Role: ${user.role}`);
 
-        // Sign the JWT token
-        const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+        // Sign the JWT token with additional user information
+        const token = jwt.sign(
+            { 
+                id: user._id, 
+                email: user.email, 
+                role: user.role, // Include user role
+                name: user.name // Include other user details as needed
+            }, 
+            JWT_SECRET, 
+            { expiresIn: '1h' }
+        );
 
-        res.status(200).json({ message: 'Login successful', token });
+        // Send back user data along with the token
+        res.status(200).json({ 
+            message: 'Login successful', 
+            token,
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                name: user.name
+            }
+        });
     } catch (error) {
-        next(error); // Pass errors to the global error handler
+        console.error('Login error:', error);
+        next(error);
     }
 });
 

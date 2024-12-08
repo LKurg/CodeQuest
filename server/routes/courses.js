@@ -1,8 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Course = require("../models/Course");
+const { User } = require('../models/User');
 const authMiddleware = require('../middleware/auth'); // Import the auth middleware
-const User = require('../models/User');
+
+
+
 // Create a new course (protected route)
 router.post("/", authMiddleware, async (req, res, next) => {
    try {
@@ -22,30 +25,24 @@ router.post("/", authMiddleware, async (req, res, next) => {
    }
 });
 
-// Get all courses (protected route)
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    // Get the user's ID from the authentication middleware
     const userId = req.user.id;
 
-    // First, find the user to get their enrolled courses
-    const user = await User.findById(userId);
+    // Use findOne instead of findById if findById is not working
+    const user = await User.findOne({ _id: userId });
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Create a set of enrolled course IDs for quick lookup
-    const enrolledCourseIds = new Set(
-      user.enrolledCourses.map(ec => ec.courseId.toString())
-    );
+    const enrolledCourseIds = user.enrolledCourses.map(ec => ec.courseId.toString());
 
-    // Fetch courses and mark enrollment status
     const courses = await Course.aggregate([
       {
         $addFields: {
           isEnrolled: {
-            $in: [{ $toString: '$_id' }, Array.from(enrolledCourseIds)]
+            $in: [{ $toString: '$_id' }, enrolledCourseIds]
           }
         }
       },
@@ -65,6 +62,8 @@ router.get('/', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Error fetching courses', error: error.message });
   }
 });
+
+
 // Get a specific course by ID (protected route)
 router.get("/:courseId", authMiddleware, async (req, res, next) => {
    try {

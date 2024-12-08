@@ -1,4 +1,4 @@
-
+/*
 const User = require('../models/User');
 
 /**
@@ -10,6 +10,7 @@ const User = require('../models/User');
  * @param {String} [lessonId] - Optional ID of the lesson involved in the activity.
  * @param {Number} [xpEarned] - Optional XP earned associated with the activity.
  */
+/*
 async function logRecentActivity(userId, type, description, courseId = null, lessonId = null, xpEarned = 0) {
     try {
         // Create the activity log
@@ -40,7 +41,10 @@ async function logRecentActivity(userId, type, description, courseId = null, les
         console.error('Error logging activity:', error.message);
     }
 }
+/*
 
 module.exports = {
     logRecentActivity,
 };
+
+*/
