@@ -74,10 +74,10 @@ const Signup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');  // Reset the general error message
-    
+  
     // Validate form
     if (!validateForm()) {
       return;
@@ -93,13 +93,17 @@ const Signup = () => {
   
       // Handle successful registration
       if (response.data) {
-        // Store token or user info in localStorage if needed
-        localStorage.setItem('user', JSON.stringify(response.data));
-
-        // Call the login function to update context
-        login(response.data);  // Update context with the logged-in user
-        
-        // Redirect to dashboard or onboarding
+        // Assuming response.data contains user info and token
+        const { user, token } = response.data;
+  
+   
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('token', token);
+  
+       
+        login(user, token);  // Update context with the logged-in user and token
+  
+        // Redirect to dashboard
         navigate('/dashboard');
       }
     } catch (error) {
@@ -120,6 +124,7 @@ const Signup = () => {
       setIsSubmitting(false);
     }
   };
+  
 
   
 

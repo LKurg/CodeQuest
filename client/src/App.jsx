@@ -12,6 +12,8 @@ import CreateCourse from './pages/CreateCourse';
 import CreateQuize from './pages/CreateQuize';
 
 import Quiz from './components/Quiz';
+import Progress from './pages/Progress';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
         <Route path='/admin/create-tutorial' element={<CreateCourse/>}/>
         <Route path='/admin/create-quize' element={<CreateQuize/>}/>
         <Route path="/course/quize/:courseId/:lessonId" element={<Quiz />} />
+        <Route path='/client/progress'element={<Progress/> }/>
+        <Route path="/client/settings" element={<Settings />} />
       </Routes>
     </Router>
   );

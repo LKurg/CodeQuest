@@ -50,19 +50,20 @@ const QuestionPreview = ({ question, onDelete }) => {
             <div>
               <h4 className="font-semibold mb-2">Choices:</h4>
               {question.choices.map((choice, index) => (
-                <div 
-                  key={index} 
-                  className={`p-2 rounded ${
-                    index === question.correctChoice 
-                      ? 'bg-green-100 border-2 border-green-300' 
-                      : 'bg-white'
-                  }`}
-                >
-                  {choice}
-                  {index === question.correctChoice && (
-                    <span className="ml-2 text-green-600 font-bold">(Correct Answer)</span>
-                  )}
-                </div>
+            <div 
+            key={index} 
+            className={`p-2 rounded ${
+              index === question.correctChoice 
+                ? 'bg-green-100 border-2 border-green-300' 
+                : 'bg-white'
+            }`}
+          >
+            {choice}
+            {index === question.correctChoice && (
+              <span className="ml-2 text-green-600 font-bold">(Correct Answer)</span>
+            )}
+          </div>
+          
               ))}
             </div>
           )}
@@ -138,16 +139,25 @@ const CreateQuiz = () => {
   };
 
   const handleAddQuestion = () => {
-    const questionToAdd = {
-      ...newQuestion,
-      correctChoice: newQuestion.questionType === 'multipleChoice' 
-        ? parseInt(newQuestion.correctAnswer) 
-        : null
+    const correctAnswerIndex = parseInt(newQuestion.correctAnswer); // Ensure it's an integer
+    
+    const updatedChoices = newQuestion.choices.map((choice, index) => ({
+      text: choice,
+      isCorrect: index === correctAnswerIndex, // Set the correct choice based on index
+    }));
+  
+    // Construct the new question object
+    const updatedQuestion = {
+      questionText: newQuestion.questionText,
+      questionType: newQuestion.questionType,
+      choices: updatedChoices,
+      correctAnswer: correctAnswerIndex, // Store the index as a number
     };
-    
-    setQuestions([...questions, questionToAdd]);
-    
-    // Reset the new question state
+  
+    // Add the question to the list of questions
+    setQuestions([...questions, updatedQuestion]);
+  
+    // Reset the question form
     setNewQuestion({
       questionText: '',
       questionType: 'multipleChoice',
@@ -155,6 +165,10 @@ const CreateQuiz = () => {
       correctAnswer: '',
     });
   };
+  
+  
+  
+  
 
   const handleSubmitQuiz = async () => {
     try {
@@ -165,12 +179,14 @@ const CreateQuiz = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       alert('Quiz created successfully!');
       // Reset everything after successful submission
       setQuestions([]);
       setSelectedLesson('');
     } catch (error) {
       console.error('Error creating quiz:', error);
+      console.log("questions",questions);
       alert('Error creating quiz');
     }
   };

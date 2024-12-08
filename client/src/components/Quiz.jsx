@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Editor } from '@monaco-editor/react';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Play, ArrowRight } from 'lucide-react';
 import Navigation from '../Layout/Navigation';
 
 function Quiz() {
@@ -11,18 +11,39 @@ function Quiz() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(null);
   const [error, setError] = useState(null);
-  const [questionResults, setQuestionResults] = useState([]);
+  const [questionFeedback, setQuestionFeedback] = useState(null);
   const [codeOutput, setCodeOutput] = useState(null);
+  const [totalQuestions, setTotalQuestions] = useState(0);
   const editorRef = useRef(null);
 
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
   };
 
+  const extractLanguageFromTitle = (title) => {
+    const languageMap = {
+      'python': 'python',
+      'javascript': 'javascript',
+      'php': 'php',
+      'java': 'java',
+      'c++': 'cpp',
+      'typescript': 'typescript'
+    };
+
+    const foundLanguage = Object.keys(languageMap).find(lang => 
+      title.toLowerCase().includes(lang)
+    );
+
+    return foundLanguage ? languageMap[foundLanguage] : 'python';
+  };
+
   const runCodeAndValidate = async () => {
     const code = editorRef.current.getValue();
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    const language = extractLanguageFromTitle(currentQuestion.questionText);
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/api/execute-code', {
@@ -33,7 +54,8 @@ function Quiz() {
         },
         body: JSON.stringify({
           code: code,
-          language: 'python'
+          language: language,
+          expectedOutput: currentQuestion.correctAnswer
         })
       });
 
@@ -63,8 +85,8 @@ function Quiz() {
     
         const quizData = await response.json();
         setQuiz(quizData);
+        setTotalQuestions(quizData.questions.length);
         setAnswers(new Array(quizData.questions.length).fill(null));
-        setQuestionResults(new Array(quizData.questions.length).fill(null));
       } catch (err) {
         setError(`Unable to load quiz: ${err.message}`);
       }
@@ -76,36 +98,52 @@ function Quiz() {
   const handleAnswerSubmit = async () => {
     const currentQuestion = quiz.questions[currentQuestionIndex];
     let isCorrect = false;
+    let feedbackMessage = '';
 
     if (currentQuestion.questionType === 'multipleChoice') {
-      isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+      isCorrect = currentQuestion.choices.find(
+        choice => choice._id === selectedAnswer && choice.isCorrect
+      );
+      feedbackMessage = isCorrect 
+        ? 'Correct! Great job!' 
+        : 'Oops! Thats not quite right.';
     } else if (currentQuestion.questionType === 'coding') {
       const codeResult = await runCodeAndValidate();
       isCorrect = codeResult && codeResult.passed;
+      feedbackMessage = isCorrect 
+        ? 'Your code passed the test!' 
+        : 'Your code didnt pass. Keep trying!';
     }
 
-    const updatedAnswers = [...answers];
-    const updatedQuestionResults = [...questionResults];
-    
-    updatedAnswers[currentQuestionIndex] = selectedAnswer;
-    updatedQuestionResults[currentQuestionIndex] = isCorrect;
-    
-    setAnswers(updatedAnswers);
-    setQuestionResults(updatedQuestionResults);
+    setQuestionFeedback({
+      isCorrect,
+      message: feedbackMessage
+    });
 
-    if (currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setCodeOutput(null);
-    } else {
-      await submitQuiz(updatedAnswers);
+    // Update answers if correct
+    if (isCorrect) {
+      const updatedAnswers = [...answers];
+      updatedAnswers[currentQuestionIndex] = selectedAnswer;
+      setAnswers(updatedAnswers);
+
+      // Move to next question or submit if last question
+      setTimeout(() => {
+        if (currentQuestionIndex < quiz.questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setSelectedAnswer(null);
+          setCodeOutput(null);
+          setQuestionFeedback(null);
+        } else {
+          submitQuiz(updatedAnswers);
+        }
+      }, 2000);
     }
   };
 
   const submitQuiz = async (submittedAnswers) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/quizzes/${quiz._id}/submit`, {
+      const response = await fetch(`http://localhost:5000/api/quiz/${quiz._id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,13 +162,216 @@ function Quiz() {
     }
   };
 
-  const handleGoBack = () => {
-    navigate(`/course/learn/${courseId}`);
+  const renderProgressIndicator = () => {
+    return (
+      <div className="flex justify-center space-x-2 mb-4">
+        {quiz.questions.map((_, index) => (
+          <div 
+            key={index} 
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              index < currentQuestionIndex ? 'bg-green-500 w-6' : 
+              index === currentQuestionIndex ? 'bg-teal-500 w-8' : 'bg-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
+  const renderMultipleChoice = () => {
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {currentQuestion.choices.map((choice) => {
+          const isSelected = selectedAnswer === choice._id;
+          const isCorrect = questionFeedback?.isCorrect && choice.isCorrect;
+          const isIncorrect = questionFeedback && isSelected && !choice.isCorrect;
+
+          return (
+            <button
+              key={choice._id}
+              onClick={() => !questionFeedback && setSelectedAnswer(choice._id)}
+              className={`
+                relative transform transition-all duration-300 ease-in-out
+                p-4 rounded-xl text-left text-lg font-medium
+                border-2 group cursor-pointer
+                ${isSelected && !questionFeedback 
+                  ? 'bg-teal-100 border-teal-500 scale-105' 
+                  : 'bg-white border-gray-200 hover:border-teal-300'}
+                ${isCorrect ? 'bg-green-100 border-green-500' : ''}
+                ${isIncorrect ? 'bg-red-100 border-red-500 opacity-70' : ''}
+              `}
+            >
+              {/* Checkmark for correct/incorrect answers */}
+              {questionFeedback && (
+                <div className="absolute top-2 right-2">
+                  {isCorrect && (
+                    <div className="text-green-500">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                  )}
+                  {isIncorrect && (
+                    <div className="text-red-500">
+                      <XCircle className="w-6 h-6" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Choice text with hover effect */}
+              <span className={`
+                block transition-all duration-300
+                ${isSelected && !questionFeedback ? 'text-teal-700' : 'text-gray-700'}
+                ${isCorrect ? 'text-green-800' : ''}
+                ${isIncorrect ? 'text-red-800 line-through' : ''}
+              `}>
+                {choice.text}
+              </span>
+
+              {/* Subtle animation for selected state */}
+              {isSelected && !questionFeedback && (
+                <span className="absolute inset-0 border-2 border-teal-500 rounded-xl animate-ping opacity-50"></span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderCodingQuestion = () => {
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    
+    return (
+      <div className="space-y-4">
+        <Editor
+          height="300px"
+          language={extractLanguageFromTitle(currentQuestion.questionText)}
+          theme="vs-dark"
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 14,
+          }}
+        />
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={runCodeAndValidate}
+            className="bg-teal-500 text-white px-4 py-2 rounded flex items-center space-x-2 hover:bg-teal-600 transition duration-300"
+          >
+            <Play size={16} />
+            <span>Run Code</span>
+          </button>
+        </div>
+        
+        {codeOutput && (
+          <div className={`mt-4 p-4 rounded-lg ${
+            codeOutput.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            <pre className="whitespace-pre-wrap">{codeOutput.output}</pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderQuizContent = () => {
+    // Quiz completed screen
+    if (score !== null) {
+      return (
+        <div className="text-center bg-gradient-to-r from-teal-400 to-blue-500 p-8 rounded-lg shadow-xl text-white animate-fade-in">
+          <h2 className="text-4xl font-bold mb-6">🎉 Quiz Completed! 🎉</h2>
+          <div className="bg-white bg-opacity-20 p-6 rounded-xl">
+            <p className="text-3xl mb-4">Your Score</p>
+            <p className="text-5xl font-extrabold">
+              {score} <span className="text-2xl">/ {totalQuestions}</span>
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate(`/course/learn/${courseId}`)}
+            className="mt-8 bg-white text-teal-600 px-8 py-3 rounded-full hover:bg-gray-100 transition duration-300 transform hover:scale-105"
+          >
+            Back to Course
+          </button>
+        </div>
+      );
+    }
+
+    // Current question rendering
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-white shadow-2xl rounded-xl animate-slide-in">
+        {/* Progress Indicator */}
+        {renderProgressIndicator()}
+
+        {/* Question Header */}
+        <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Question {currentQuestionIndex + 1}
+          </h2>
+          <p className="text-lg text-gray-600">{currentQuestion.questionText}</p>
+        </div>
+
+        {/* Question Content */}
+        <div className="space-y-4">
+          {currentQuestion.questionType === 'multipleChoice' && renderMultipleChoice()}
+          {currentQuestion.questionType === 'coding' && renderCodingQuestion()}
+        </div>
+
+        {/* Question Feedback */}
+        {questionFeedback && (
+          <div className={`
+            mt-4 p-4  rounded-lg text-center text-lg  font-semibold
+            ${questionFeedback.isCorrect 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'}
+          `}>
+            {questionFeedback.message}
+          </div>
+        )}
+
+        {/* Submit/Next Button */}
+        <div className="mt-6 flex justify-end">
+          <button 
+            onClick={handleAnswerSubmit}
+            disabled={!selectedAnswer || questionFeedback?.isCorrect}
+            className="
+              bg-teal-600 text-white px-6 py-3 rounded-full 
+              disabled:opacity-50 hover:bg-teal-700 
+              transition duration-300 flex items-center space-x-2
+              group
+            "
+          >
+            <span>{currentQuestionIndex < quiz.questions.length - 1 ? 'Next' : 'Submit'}</span>
+            <ArrowRight 
+              className="
+                w-5 h-5 transition-transform group-hover:translate-x-1
+                group-disabled:translate-x-0
+              " 
+            />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Loading and Error States
   if (error) return (
     <Navigation>
-      <div className="text-red-600 p-6">{error}</div>
+      <div className="flex justify-center items-center h-screen text-red-600 p-6">
+        <div className="bg-red-50 p-8 rounded-lg shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Oops! Something went wrong</h2>
+          <p>{error}</p>
+          <button 
+            onClick={() => navigate(`/course/learn/${courseId}`)}
+            className="mt-4 bg-red-500 text-white px-6 py-2 rounded-full"
+          >
+            Return to Course
+          </button>
+        </div>
+      </div>
     </Navigation>
   );
 
@@ -142,135 +383,9 @@ function Quiz() {
     </Navigation>
   );
 
-  const currentQuestion = quiz.questions[currentQuestionIndex];
-
-  const renderQuestionResult = (index) => {
-    const result = questionResults[index];
-    if (result === null) return null;
-    return result ? (
-      <CheckCircle className="text-green-500 inline-block ml-2" />
-    ) : (
-      <XCircle className="text-red-500 inline-block ml-2" />
-    );
-  };
-
-  const renderQuestionResultSection = () => {
-    return (
-      <div className="mt-4">
-        <h3 className="text-xl font-semibold mb-2">Previous Question Results</h3>
-        <div className="flex space-x-2">
-          {questionResults.map((result, index) => (
-            <div 
-              key={index} 
-              className={`w-8 h-8 rounded-full ${
-                result === true ? 'bg-green-500' : 
-                result === false ? 'bg-red-500' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderQuizContent = () => {
-    if (score !== 0) {
-      return (
-        <div className="text-center bg-gradient-to-r from-teal-400 to-blue-500 p-8 rounded-lg shadow-xl text-white">
-          <h2 className="text-3xl font-bold mb-4">🎉 Quiz Completed! 🎉</h2>
-          <p className="text-2xl">Your Score: {score} / {quiz.questions.length}</p>
-          <div className="mt-4">
-            {questionResults.map((result, index) => (
-              <div 
-                key={index} 
-                className={`inline-block w-4 h-4 mx-1 rounded-full ${
-                  result === true ? 'bg-green-500' : 'bg-red-500'
-                }`}
-              />
-            ))}
-          </div>
-          <button 
-            onClick={handleGoBack}
-            className="mt-6 bg-white text-teal-600 px-6 py-3 rounded-full hover:bg-gray-100 transition duration-300"
-          >
-            Back to Course
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="max-w-3xl mx-auto p-6 bg-white shadow-2xl rounded-xl">
-        {renderQuestionResultSection()}
-        
-        <h2 className="text-2xl font-bold mb-6">
-          Question {currentQuestionIndex + 1} 
-          {renderQuestionResult(currentQuestionIndex)}
-        </h2>
-        
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <p className="text-lg mb-4">{currentQuestion.questionText}</p>
-          
-          {currentQuestion.questionType === 'multipleChoice' && (
-            <div className="space-y-3">
-              {currentQuestion.choices.map((choice, index) => (
-                <button
-                  key={choice._id}
-                  onClick={() => setSelectedAnswer(choice._id)}
-                  className={`w-full text-left p-3 rounded-lg transition duration-300 ${
-                    selectedAnswer === choice._id
-                      ? 'bg-teal-600 text-white' 
-                      : 'bg-gray-100 hover:bg-gray-200'
-                  }`}
-                >
-                  {choice.text || `Choice ${index + 1}`}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {currentQuestion.questionType === 'coding' && (
-            <div>
-              <Editor
-                height="300px"
-                language="python"
-                theme="vs-dark"
-                onMount={handleEditorDidMount}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                }}
-              />
-              {codeOutput && (
-                <div className={`mt-4 p-4 rounded ${
-                  codeOutput.passed ? 'bg-green-100' : 'bg-red-100'
-                }`}>
-                  <pre>{codeOutput.output}</pre>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="mt-6 flex justify-between items-center">
-            <p className="text-gray-600">
-              Question {currentQuestionIndex + 1} of {quiz.questions.length}
-            </p>
-            <button 
-              onClick={handleAnswerSubmit}
-              disabled={selectedAnswer === null}
-              className="bg-teal-600 text-white px-6 py-3 rounded-full disabled:opacity-50 hover:bg-teal-700 transition duration-300"
-            >
-              {currentQuestionIndex < quiz.questions.length - 1 ? 'Next' : 'Submit'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <Navigation>
-      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
         {renderQuizContent()}
       </div>
     </Navigation>

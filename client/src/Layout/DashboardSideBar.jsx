@@ -106,22 +106,14 @@ const calculateCourseProgress = (progress) => {
     { 
       icon: faChartLine, 
       title: 'Progress', 
-      path: '/dashboard/progress' 
+      path: '/client/progress' 
     },
-    { 
-      icon: faTrophy, 
-      title: 'Achievements', 
-      path: '/dashboard/achievements' 
-    },
-    { 
-      icon: faBullseye, 
-      title: 'Learning Paths', 
-      path: '/dashboard/paths' 
-    },
+ 
+ 
     { 
       icon: faCog, 
       title: 'Account Settings', 
-      path: '/dashboard/settings' 
+      path: '/client/settings' 
     }
   ];
 
