@@ -148,10 +148,9 @@ const MainLayout = ({ children }) => {
             <div>
               <h4 className="text-md font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2">
-                <li><a href="/home" className="text-gray-300 hover:text-white">Home</a></li>
+                <li><a href="/" className="text-gray-300 hover:text-white">Home</a></li>
                 <li><a href="/challenges" className="text-gray-300 hover:text-white">Challenges</a></li>
-                <li><a href="/leaderboard" className="text-gray-300 hover:text-white">Leaderboard</a></li>
-                <li><a href="/resources" className="text-gray-300 hover:text-white">Resources</a></li>
+           
               </ul>
             </div>
 
@@ -159,9 +158,9 @@ const MainLayout = ({ children }) => {
             <div>
               <h4 className="text-md font-semibold mb-4">Community</h4>
               <ul className="space-y-2">
-                <li><a href="/forums" className="text-gray-300 hover:text-white">Forums</a></li>
-                <li><a href="/contribute" className="text-gray-300 hover:text-white">Contribute</a></li>
-                <li><a href="/mentorship" className="text-gray-300 hover:text-white">Mentorship</a></li>
+                <li><a href="/" className="text-gray-300 hover:text-white">Forums</a></li>
+                <li><a href="/" className="text-gray-300 hover:text-white">Contribute</a></li>
+
               </ul>
             </div>
 
