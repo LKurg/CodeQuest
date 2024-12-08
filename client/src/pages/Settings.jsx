@@ -9,7 +9,7 @@ import {
   faSave,
   faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 import DashboardSidebar from '../Layout/DashboardSideBar';
 
 function Settings() {
@@ -158,7 +158,7 @@ function Settings() {
   };
 
   return (
-    <Navigation>
+    <MainLayout>
       <DashboardSidebar>
         <div className="p-8 bg-gray-50 min-h-screen">
           <div className="flex justify-between items-center mb-8">
@@ -315,7 +315,7 @@ function Settings() {
           </div>
         </div>
       </DashboardSidebar>
-    </Navigation>
+    </MainLayout>
   );
 }
 

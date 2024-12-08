@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Editor } from '@monaco-editor/react';
 import { CheckCircle, XCircle, Play, ArrowRight, Star } from 'lucide-react';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 
 function Quiz() {
   const { courseId, lessonId } = useParams();
@@ -418,7 +418,7 @@ function Quiz() {
 
   // Loading and Error States
   if (error) return (
-    <Navigation>
+    <MainLayout>
       <div className="flex justify-center items-center h-screen text-red-600 p-6">
         <div className="bg-red-50 p-8 rounded-lg shadow-lg text-center">
           <h2 className="text-2xl font-bold mb-4">Oops! Something went wrong</h2>
@@ -431,23 +431,23 @@ function Quiz() {
           </button>
         </div>
       </div>
-    </Navigation>
+    </MainLayout>
   );
 
   if (!quiz) return (
-    <Navigation>
+    <MainLayout>
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-teal-500"></div>
       </div>
-    </Navigation>
+    </MainLayout>
   );
 
   return (
-    <Navigation>
+    <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
         {renderQuizContent()}
       </div>
-    </Navigation>
+    </MainLayout>
   );
 }
 

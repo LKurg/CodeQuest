@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronRight, faBook } from '@fortawesome/free-solid-svg-icons';
 import { faNodeJs, faReact } from '@fortawesome/free-brands-svg-icons';
 import CourseContent from './CourseContent';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 import DashboardSidebar from '../Layout/DashboardSideBar';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -135,7 +135,7 @@ function Courses() {
   if (error) return <div>{error}</div>;
 
   return (
-    <Navigation>
+    <MainLayout>
       <div className="flex min-h-screen bg-gray-50">
         <DashboardSidebar>
           <div className="p-8">
@@ -197,7 +197,7 @@ function Courses() {
           </div>
         </DashboardSidebar>
       </div>
-    </Navigation>
+    </MainLayout>
   );
 }
 

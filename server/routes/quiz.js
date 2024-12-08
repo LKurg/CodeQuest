@@ -5,63 +5,73 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// Create a quiz
+
+
 router.post('/create', authMiddleware, async (req, res) => {
-    const { lessonId, questions } = req.body;
-  
-    if (!lessonId || !Array.isArray(questions) || questions.length === 0) {
-      return res.status(400).json({ error: 'Invalid input. Please provide a valid lesson and questions.' });
-    }
-  
-    try {
-      // Validate and structure the questions
-      const formattedQuestions = questions.map((question) => {
-        // Validate each question type and structure
-        if (question.questionType === 'multipleChoice') {
-          if (!question.questionText || !question.choices || question.choices.length < 2 || question.correctChoice === undefined) {
-            throw new Error('Invalid multiple choice question structure.');
-          }
-  
-          // Format the multiple choice question
-          return {
-            questionText: question.questionText,
-            questionType: 'multipleChoice',
-            choices: question.choices.map(choice => ({
-              text: choice.text,
-              isCorrect: choice.isCorrect
-            })),
-            correctAnswer: question.correctChoice, // This could be the index of the correct answer
-          };
-        } else if (question.questionType === 'coding') {
-          if (!question.questionText || !question.correctAnswer) {
-            throw new Error('Invalid coding question structure.');
-          }
-  
-          // Format the coding question
-          return {
-            questionText: question.questionText,
-            questionType: 'coding',
-            correctAnswer: question.correctAnswer, // This is the expected code or output
-          };
-        } else {
-          throw new Error('Unsupported question type.');
+  const { lessonId, questions } = req.body;
+
+  if (!lessonId || !Array.isArray(questions) || questions.length === 0) {
+    return res.status(400).json({ error: 'Invalid input. Please provide a valid lesson and questions.' });
+  }
+
+  try {
+    const formattedQuestions = questions.map((question) => {
+      if (question.questionType === 'multipleChoice') {
+        console.log('Processing question:', question);
+    
+        if (!Array.isArray(question.choices) || question.choices.length === 0) {
+          throw new Error('Multiple choice question must have choices.');
         }
-      });
-  
-      // Create the quiz with the validated questions
-      const quiz = new Quiz({
-        lessonId,
-        questions: formattedQuestions,
-      });
-  
-      await quiz.save();
-      res.status(201).json({ message: 'Quiz created successfully', quiz });
-  
-    } catch (error) {
-      console.error('Error creating quiz:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+    
+        // Check for correct choice
+        const correctChoice = question.choices.findIndex(choice => choice.isCorrect);
+        console.log('Correct choice index:', correctChoice);
+    
+        if (correctChoice === -1) {
+          throw new Error('At least one choice must be marked as correct.');
+        }
+    
+        return {
+          questionText: question.questionText,
+          questionType: 'multipleChoice',
+          choices: question.choices.map(choice => ({
+            text: choice.text,
+            isCorrect: choice.isCorrect,
+          })),
+          correctChoice: correctChoice.toString(), // Convert index to string
+        };
+      } else if (question.questionType === 'coding') {
+        if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
+          throw new Error('Coding questions must have a valid correct answer.');
+        }
+    
+        return {
+          questionText: question.questionText,
+          questionType: 'coding',
+          choices: [],
+          correctAnswer: question.correctAnswer,
+        };
+      } else {
+        throw new Error('Unsupported question type.');
+      }
+    });
+    
+
+    const quiz = new Quiz({
+      lessonId,
+      questions: formattedQuestions,
+    });
+
+    await quiz.save();
+    res.status(201).json(quiz);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
+
   router.get('/:lessonId', authMiddleware, async (req, res) => {
     try {
         console.log('Received lessonId:', req.params.lessonId);

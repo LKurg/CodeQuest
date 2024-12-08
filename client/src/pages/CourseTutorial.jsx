@@ -10,7 +10,7 @@ import {
   faBookOpen, 
   faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 import ContentRenderer from '../components/ContentRenderer';
 
 import ProgressTracker from '../components/ProgressTracker';
@@ -231,7 +231,7 @@ const handleTakeQuiz = () => {
   const totalLessons = courseData.sections.flatMap(s => s.lessons).length;
 
   return (
-    <Navigation>
+    <MainLayout>
       <div className="flex min-h-screen bg-gray-50">
         <div className="w-64 bg-white border-r p-6 overflow-auto">
           <div className="flex flex-col mb-8">
@@ -337,7 +337,7 @@ const handleTakeQuiz = () => {
           )}
         </div>
       </div>
-    </Navigation>
+    </MainLayout>
   );
 }
 

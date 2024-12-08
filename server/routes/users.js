@@ -6,6 +6,7 @@ const Course = require('../models/Course');
 const authMiddleware = require('../middleware/auth');
 require('dotenv').config();
 const mongoose = require('mongoose');
+const { logRecentActivity } = require('../services/activityService');
 
 
 
@@ -37,6 +38,193 @@ router.post('/register', async (req, res, next) => {
     }
 });
 
+router.get('/stats', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id; 
+
+ 
+        const user = await User.findById(userId).select('xp streak');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        res.json({
+            xp: user.xp || 0,
+            streak: user.streak?.days || 0, // Safely access nested properties
+        });
+    } catch (error) {
+        console.error('Error fetching user stats:', error);
+        res.status(500).json({ message: 'Error fetching stats', error: error.message });
+    }
+});
+router.get('/recent-activities', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Fetch recent activities, populated with course and lesson details
+        const activities = await RecentActivity.find({ userId })
+            .sort({ timestamp: -1 }) // Sort by most recent first
+            .limit(20) // Limit to 20 recent activities
+            .populate('courseId', 'title') // Populate course titles
+            .populate('lessonId', 'title'); // Populate lesson titles
+
+        // Transform for frontend
+        const formattedActivities = activities.map(activity => ({
+            id: activity._id,
+            type: activity.type,
+            description: activity.description,
+            courseTitle: activity.courseId ? activity.courseId.title : null,
+            lessonTitle: activity.lessonId ? activity.lessonId.title : null,
+            xpEarned: activity.xpEarned,
+            timestamp: activity.timestamp,
+            relativeTime: getRelativeTime(activity.timestamp),
+        }));
+
+        res.json(formattedActivities);
+    } catch (error) {
+        console.error('Error fetching recent activities:', error);
+        res.status(500).json({ message: 'Failed to fetch recent activities' });
+    }
+});
+
+// Helper function for relative time
+function getRelativeTime(timestamp) {
+    const now = new Date();
+    const diffInMilliseconds = now - timestamp;
+    const diffInMinutes = diffInMilliseconds / (1000 * 60);
+    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+    const diffInDays = diffInMilliseconds / (1000 * 60 * 60 * 24);
+
+    if (diffInMinutes < 1) return 'just now';
+    if (diffInMinutes < 60) return `${Math.round(diffInMinutes)} minutes ago`;
+    if (diffInHours < 24) return `${Math.round(diffInHours)} hours ago`;
+    return `${Math.round(diffInDays)} days ago`;
+}
+
+router.get('/detailed-progress', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Fetch all enrolled courses with progress
+        const enrolledCourses = await Promise.all(user.progress.map(async (progress) => {
+            const course = await Course.findById(progress.courseId).populate({
+                path: 'sections',
+                populate: { path: 'lessons' }
+            });
+
+            if (!course) return null;
+
+            // Calculate total and completed lessons
+            const totalLessons = course.sections.reduce(
+                (count, section) => count + section.lessons.length, 
+                0
+            );
+            const completedLessons = progress.completedLessons.length;
+            const progressPercentage = ((completedLessons / totalLessons) * 100).toFixed(2);
+
+            return {
+                _id: course._id,
+                title: course.title,
+                progressPercentage: parseFloat(progressPercentage),
+                completedLessons,
+                totalLessons
+            };
+        })).then(courses => courses.filter(Boolean));
+
+        // Calculate overall progress
+        const overallProgress = enrolledCourses.length > 0
+            ? (enrolledCourses.reduce((sum, course) => sum + course.progressPercentage, 0) / enrolledCourses.length).toFixed(2)
+            : 0;
+
+        // Dynamically calculate skill progress based on completed courses
+        const skillProgress = await calculateSkillProgress(user, enrolledCourses);
+
+        // Dynamically generate achievements
+        const achievements = await generateAchievements(user, enrolledCourses);
+
+        // Prepare final response
+        const response = {
+            courses: enrolledCourses,
+            overallProgress: parseFloat(overallProgress),
+            totalCoursesCompleted: enrolledCourses.filter(course => course.progressPercentage === 100).length,
+            totalXP: user.xp || 0,
+            skillProgress,
+            achievements
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching detailed progress:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Helper function to calculate skill progress dynamically
+async function calculateSkillProgress(user, enrolledCourses) {
+    // This could be expanded to use more sophisticated tracking
+    const skillMap = {
+        'Python': ['Learn Python'],
+        'JavaScript': ['JavaScript Fundamentals'],
+        'React': ['React Basics']
+    };
+
+    const skillProgress = Object.entries(skillMap).map(([skill, courseTitles]) => {
+        const relevantCourses = enrolledCourses.filter(course => 
+            courseTitles.includes(course.title)
+        );
+
+        const averageProgress = relevantCourses.length > 0
+            ? relevantCourses.reduce((sum, course) => sum + course.progressPercentage, 0) / relevantCourses.length
+            : 0;
+
+        return {
+            name: skill,
+            percentage: Math.round(averageProgress)
+        };
+    });
+
+    return skillProgress;
+}
+
+// Helper function to generate achievements dynamically
+async function generateAchievements(user, enrolledCourses) {
+    const achievements = [];
+
+    // Achievement for first course completion
+    if (enrolledCourses.some(course => course.progressPercentage === 100)) {
+        achievements.push({
+            title: 'Course Completer',
+            description: 'Completed your first course',
+            dateEarned: new Date(),
+            icon: 'faTrophy'
+        });
+    }
+
+    // Achievement for reaching certain XP milestones
+    const xpMilestones = [
+        { threshold: 100, title: 'Beginner Learner', icon: 'faBook' },
+        { threshold: 500, title: 'Intermediate Scholar', icon: 'faBookOpen' },
+        { threshold: 1000, title: 'Advanced Learner', icon: 'faGraduationCap' }
+    ];
+
+    const xpAchievement = xpMilestones.find(milestone => 
+        user.xp >= milestone.threshold
+    );
+
+    if (xpAchievement) {
+        achievements.push({
+            title: xpAchievement.title,
+            description: `Reached ${xpAchievement.threshold} XP`,
+            dateEarned: new Date(),
+            icon: xpAchievement.icon
+        });
+    }
+
+    return achievements;
+}
 // Enroll a user in a course
 router.post('/enroll/:courseId', authMiddleware, async (req, res, next) => {
     try {
@@ -85,6 +273,67 @@ router.post('/enroll/:courseId', authMiddleware, async (req, res, next) => {
     }
 });
 
+
+router.post('/update-xp', authMiddleware, async (req, res) => {
+    const { xpToAdd, courseId, quizId } = req.body;
+    console.log('Update XP Request:', { 
+        userId: req.user?.id, 
+        xpToAdd, 
+        courseId, 
+        quizId 
+    });
+
+    try {
+        if (!req.user || !req.user.id) {
+            console.error('No authenticated user found');
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.user.id;
+
+        // Validate userId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            console.error('Invalid user ID:', userId);
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+
+        // Update XP for the authenticated user
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { $inc: { xp: xpToAdd } }, // Increment the XP by xpToAdd
+            { new: true } // Return the updated document
+        );
+
+        if (!user) {
+            console.error('User not found for ID:', userId);
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Log the updated user details
+        console.log('Updated User XP:', user.xp);
+
+        // Send success response
+        res.status(200).json({ message: 'XP updated successfully', xp: user.xp });
+    } catch (error) {
+        console.error('XP Update Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// Helper function to check consecutive day activity
+function isConsecutiveDay(lastActivity) {
+  const today = new Date();
+  const last = new Date(lastActivity);
+  const oneDayAgo = new Date(today);
+  oneDayAgo.setDate(today.getDate() - 1);
+
+  return (
+    last.getFullYear() === oneDayAgo.getFullYear() &&
+    last.getMonth() === oneDayAgo.getMonth() &&
+    last.getDate() === oneDayAgo.getDate()
+  );
+}
 
 // Login a user
 router.post('/login', async (req, res, next) => {

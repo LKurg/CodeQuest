@@ -11,7 +11,7 @@ import {
   BookOpen,
   Zap,
 } from 'lucide-react';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 import { useAuth } from '../context/AuthContext'; // Import the auth context
 
 const LandingPage = () => {
@@ -59,7 +59,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <Navigation>
+    <MainLayout>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
         {/* Hero Section */}
         <div className="relative overflow-hidden">
@@ -88,7 +88,7 @@ const LandingPage = () => {
                 data-aos-delay="400"
                 className="flex space-x-4"
               >
-                {/* Dynamic Navigation */}
+                {/* Dynamic MainLayout */}
                 <Link
                   to={isAuthenticated ? '/dashboard' : '/get-started'}
                   className="inline-flex items-center px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
@@ -188,7 +188,7 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
-    </Navigation>
+    </MainLayout>
   );
 };
 

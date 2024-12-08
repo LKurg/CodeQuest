@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Navigation from '../Layout/Navigation';
+import MainLayout from '../Layout/MainLayout';
 import DashboardSidebar from '../Layout/DashboardSideBar';
 import ApexCharts from 'react-apexcharts';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -114,7 +114,7 @@ function Progress() {
   }, []);
 
   return (
-    <Navigation>
+    <MainLayout>
       <DashboardSidebar>
         <div className="p-8 bg-gray-50 min-h-screen">
           <div className="flex justify-between items-center mb-8">
@@ -235,7 +235,7 @@ function Progress() {
           </div>
         </div>
       </DashboardSidebar>
-    </Navigation>
+    </MainLayout>
   );
 }
 
