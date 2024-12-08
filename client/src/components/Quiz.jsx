@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Editor } from '@monaco-editor/react';
-import { CheckCircle, XCircle, Play, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Play, ArrowRight, Star } from 'lucide-react';
 import Navigation from '../Layout/Navigation';
 
 function Quiz() {
@@ -17,10 +17,39 @@ function Quiz() {
   const [codeOutput, setCodeOutput] = useState(null);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const editorRef = useRef(null);
+  const [xpEarned, setXpEarned] = useState(0);
+  const XP_PER_QUESTION = 50;
+  const [showXPPopup, setShowXPPopup] = useState(false);
+  const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
 
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
   };
+
+  const updateUserXP = async (xpToAdd) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/users/update-xp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          xpToAdd,
+          courseId: courseId,
+          quizId: quiz._id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update XP');
+      }
+    } catch (err) {
+      console.error('XP update error:', err);
+    }
+  };
+
 
   const extractLanguageFromTitle = (title) => {
     const languageMap = {
@@ -99,47 +128,73 @@ function Quiz() {
     const currentQuestion = quiz.questions[currentQuestionIndex];
     let isCorrect = false;
     let feedbackMessage = '';
-
+  
     if (currentQuestion.questionType === 'multipleChoice') {
       isCorrect = currentQuestion.choices.find(
         choice => choice._id === selectedAnswer && choice.isCorrect
       );
       feedbackMessage = isCorrect 
         ? 'Correct! Great job!' 
-        : 'Oops! Thats not quite right.';
+        : 'Oops! That\'s not quite right.';
     } else if (currentQuestion.questionType === 'coding') {
       const codeResult = await runCodeAndValidate();
       isCorrect = codeResult && codeResult.passed;
       feedbackMessage = isCorrect 
         ? 'Your code passed the test!' 
-        : 'Your code didnt pass. Keep trying!';
+        : 'Your code didn\'t pass. Keep trying!';
     }
-
+  
+    // XP Tracking
+    const earnedXp = isCorrect ? XP_PER_QUESTION : 0;
+    
     setQuestionFeedback({
       isCorrect,
       message: feedbackMessage
     });
-
-    // Update answers if correct
+  
+    // Update answers array
+    const updatedAnswers = [...answers];
+    updatedAnswers[currentQuestionIndex] = selectedAnswer;
+    setAnswers(updatedAnswers);
+  
+    // Track correct answers
     if (isCorrect) {
-      const updatedAnswers = [...answers];
-      updatedAnswers[currentQuestionIndex] = selectedAnswer;
-      setAnswers(updatedAnswers);
-
-      // Move to next question or submit if last question
+      setCorrectAnswersCount(prev => prev + 1);
+    }
+  
+    // Update XP if correct
+    if (isCorrect) {
+      setXpEarned(prev => prev + earnedXp);
+      setShowXPPopup(true);
+      await updateUserXP(earnedXp);
+      
+      // Hide XP popup after 2 seconds
       setTimeout(() => {
-        if (currentQuestionIndex < quiz.questions.length - 1) {
-          setCurrentQuestionIndex(prev => prev + 1);
-          setSelectedAnswer(null);
-          setCodeOutput(null);
-          setQuestionFeedback(null);
-        } else {
-          submitQuiz(updatedAnswers);
-        }
+        setShowXPPopup(false);
       }, 2000);
     }
+  
+    // Always allow proceeding to next question or submitting quiz
+    setTimeout(() => {
+      if (currentQuestionIndex < quiz.questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setSelectedAnswer(null);
+        setCodeOutput(null);
+        setQuestionFeedback(null);
+      } else {
+        submitQuiz(updatedAnswers);
+      }
+    }, 2000);
   };
 
+  const XPPopup = ({ xp }) => (
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+      <div className="bg-yellow-400 text-white p-6 rounded-full shadow-xl animate-bounce flex items-center space-x-2">
+        <Star className="w-10 h-10 text-white" />
+        <span className="text-3xl font-bold">+{xp} XP</span>
+      </div>
+    </div>
+  );
   const submitQuiz = async (submittedAnswers) => {
     try {
       const token = localStorage.getItem('token');
@@ -156,7 +211,9 @@ function Quiz() {
       });
 
       const result = await response.json();
-      setScore(result.score);
+      
+      // Set score to the number of correct answers
+      setScore(correctAnswersCount);
     } catch (err) {
       setError('Failed to submit quiz');
     }
@@ -281,12 +338,14 @@ function Quiz() {
     if (score !== null) {
       return (
         <div className="text-center bg-gradient-to-r from-teal-400 to-blue-500 p-8 rounded-lg shadow-xl text-white animate-fade-in">
+          {showXPPopup && <XPPopup xp={xpEarned} />}
           <h2 className="text-4xl font-bold mb-6">🎉 Quiz Completed! 🎉</h2>
           <div className="bg-white bg-opacity-20 p-6 rounded-xl">
             <p className="text-3xl mb-4">Your Score</p>
             <p className="text-5xl font-extrabold">
               {score} <span className="text-2xl">/ {totalQuestions}</span>
             </p>
+            <p className="text-2xl mt-4">XP Earned: {xpEarned}</p>
           </div>
           <button 
             onClick={() => navigate(`/course/learn/${courseId}`)}
@@ -297,12 +356,12 @@ function Quiz() {
         </div>
       );
     }
-
     // Current question rendering
     const currentQuestion = quiz.questions[currentQuestionIndex];
 
     return (
       <div className="max-w-4xl mx-auto p-6 bg-white shadow-2xl rounded-xl animate-slide-in">
+        {showXPPopup && <XPPopup xp={xpEarned} />}
         {/* Progress Indicator */}
         {renderProgressIndicator()}
 
