@@ -69,13 +69,13 @@ const Login = () => {
       const response = await axios.post('http://localhost:5000/api/users/login', formData);
   
       if (response.data && response.data.token) {
-        // Extract user data (typically excluding sensitive information)
-        const userData = {
-          email: formData.email,
-          // Add any other non-sensitive user information you want to store
-        };
-  
-        // Call the login function to update context with user data and token
+        // Use the full user object from the server response
+        const userData = response.data.user; // This should now include the role
+
+        console.log('Login Response User Data:', userData);
+        console.log('User Role:', userData.role);
+
+        // Call the login function with the full user data and token
         login(userData, response.data.token);
         
         // Redirect to dashboard or other page

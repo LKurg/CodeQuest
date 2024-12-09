@@ -1,32 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faBook, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faBook, faSpinner, faImage } from "@fortawesome/free-solid-svg-icons";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
+import AdminLayout from "../Layout/AdminLayout";
+import MainLayout from "../Layout/MainLayout";
 
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, 3, 4, 5, 6, false] }],
-    [{ font: [] }],
-    [{ size: ["small", false, "large", "huge"] }],
-    ["bold", "italic", "underline", "strike"],
-    [{ color: [] }, { background: [] }],
-    [{ script: "sub" }, { script: "super" }],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ indent: "-1" }, { indent: "+1" }],
-    [{ align: [] }],
-    ["blockquote", "code-block"],
-    ["link", "image", "video"],
-    ["clean"],
-  ],
+// Custom image handler
+const imageHandler = (quillRef) => {
+  const input = document.createElement('input');
+  input.setAttribute('type', 'file');
+  input.setAttribute('accept', 'image/*');
+  input.click();
+
+  input.onchange = async () => {
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:5000/api/courses/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const quill = quillRef.current.getEditor();
+      const range = quill.getSelection(true);
+      quill.insertEmbed(range.index, 'image', response.data.imagePath);
+    } catch (error) {
+      console.error('Image upload failed', error);
+      alert('Image upload failed');
+    }
+  };
 };
-
-const formats = [
-  "header", "font", "size", "bold", "italic", "underline", "strike",
-  "color", "background", "script", "list", "bullet", "indent", 
-  "align", "blockquote", "code-block", "link", "image", "video"
-];
 
 const CreateCourse = () => {
   const [course, setCourse] = useState({
@@ -39,6 +49,53 @@ const CreateCourse = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Refs for Quill editors to enable custom image handler
+  const courseDescriptionRef = React.useRef(null);
+  const lessonRefs = React.useRef([]);
+
+  // Memoized modules configuration for Quill
+  const modules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+        [{ font: [] }],
+        [{ size: ["small", false, "large", "huge"] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ color: [] }, { background: [] }],
+        [{ script: "sub" }, { script: "super" }],
+        [{ list: "ordered" }, { list: "bullet" }],
+        [{ indent: "-1" }, { indent: "+1" }],
+        [{ align: [] }],
+        ["blockquote", "code-block"],
+        ["link", "image", "video"],
+        ["clean"],
+      ],
+      handlers: {
+        'image': function() {
+          imageHandler(courseDescriptionRef);
+        }
+      }
+    }
+  }), []);
+
+  const lessonModules = useMemo(() => ({
+    toolbar: {
+      container: modules.toolbar.container,
+      handlers: {
+        'image': function() {
+          const currentRef = lessonRefs.current[this.quill.container.dataset.index];
+          imageHandler({ current: currentRef });
+        }
+      }
+    }
+  }), [modules]);
+
+  const formats = [
+    "header", "font", "size", "bold", "italic", "underline", "strike",
+    "color", "background", "script", "list", "indent", 
+    "align", "blockquote", "code-block", "link", "image", "video"
+  ];
 
   const addSection = () => {
     if (currentSection.trim() === "") return;
@@ -90,8 +147,7 @@ const CreateCourse = () => {
     setErrorMessage("");
   
     try {
-      // Retrieve the token from storage or state
-      const token = localStorage.getItem("token"); // Adjust based on your app's token storage strategy
+      const token = localStorage.getItem("token");
   
       if (!token) {
         setErrorMessage("Authentication token is missing. Please log in again.");
@@ -102,7 +158,7 @@ const CreateCourse = () => {
       const response = await axios.post("http://localhost:5000/api/courses", course, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Add the token here
+          Authorization: `Bearer ${token}`,
         },
       });
   
@@ -125,6 +181,8 @@ const CreateCourse = () => {
   };
   
   return (
+    <MainLayout>
+    <AdminLayout>
     <div className="p-6 bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-4 flex items-center">
         <FontAwesomeIcon icon={faBook} className="mr-2 text-teal-500" />
@@ -158,6 +216,7 @@ const CreateCourse = () => {
       <div className="mb-4">
         <label className="block font-semibold mb-2">Course Description</label>
         <ReactQuill
+          ref={courseDescriptionRef}
           value={course.description}
           onChange={(value) => setCourse({ ...course, description: value })}
           modules={modules}
@@ -198,7 +257,10 @@ const CreateCourse = () => {
             </div>
 
             {section.lessons.map((lesson, lessonIndex) => (
-              <div key={lessonIndex} className="mb-2 p-2 border rounded bg-white relative">
+              <div 
+                key={lessonIndex} 
+                className="mb-2 p-2 border rounded bg-white relative"
+              >
                 <button 
                   onClick={() => deleteLesson(sectionIndex, lessonIndex)}
                   className="absolute top-2 right-2 text-red-500 hover:text-red-700"
@@ -220,11 +282,28 @@ const CreateCourse = () => {
                   placeholder="Lesson title"
                 />
                 <ReactQuill
+                  ref={(el) => {
+                    // Create a refs array for lesson editors
+                    if (!lessonRefs.current[sectionIndex]) {
+                      lessonRefs.current[sectionIndex] = [];
+                    }
+                    lessonRefs.current[sectionIndex][lessonIndex] = el;
+                    // Add a data attribute to help with image upload
+                    if (el) {
+                      el.getEditor().container.dataset.index = lessonIndex;
+                    }
+                  }}
                   value={lesson.description}
                   onChange={(value) =>
                     updateLessonContent(sectionIndex, lessonIndex, value)
                   }
-                  modules={modules}
+                  modules={{
+                    ...lessonModules,
+                    toolbar: {
+                      ...lessonModules.toolbar,
+                      container: lessonModules.toolbar.container
+                    }
+                  }}
                   formats={formats}
                 />
               </div>
@@ -264,6 +343,8 @@ const CreateCourse = () => {
         )}
       </button>
     </div>
+    </AdminLayout>
+    </MainLayout>
   );
 };
 

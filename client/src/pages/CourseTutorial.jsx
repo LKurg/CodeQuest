@@ -233,7 +233,8 @@ const handleTakeQuiz = () => {
   return (
     <MainLayout>
       <div className="flex min-h-screen bg-gray-50">
-        <div className="w-64 bg-white border-r p-6 overflow-auto">
+      <div className="w-64 bg-white border-r p-6 overflow-y-auto sticky top-0 h-screen">
+
           <div className="flex flex-col mb-8">
             <div className="flex items-center mb-4">
               <FontAwesomeIcon 

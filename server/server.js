@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const connectDB = require('./connection');
 const userRoutes = require('./routes/users'); // Import user routes
@@ -29,6 +30,7 @@ app.get('/health', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 //app.use('/api/quests', questRoutes);
 

@@ -5,26 +5,91 @@ const { User } = require('../models/User');
 const authMiddleware = require('../middleware/auth'); // Import the auth middleware
 
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-// Create a new course (protected route)
-router.post("/", authMiddleware, async (req, res, next) => {
-   try {
-     const { title, description, sections } = req.body;
-     
-     // Validate input
-     if (!title || !description) {
-       return res.status(400).json({ message: "Title and description are required." });
-     }
-     
-     // Create and save the course
-     const newCourse = new Course({ title, description, sections });
-     const savedCourse = await newCourse.save();
-     res.status(201).json(savedCourse);
-   } catch (error) {
-     next(error);
-   }
+
+
+// Configure multer for file storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../client/public/uploads');
+    
+    // Ensure the upload directory exists
+    if (!fs.existsSync(uploadDir)){
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate a unique filename
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
 });
 
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB file size limit
+});
+
+// Image upload route
+router.post('/upload', authMiddleware, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Generate the relative path for storing in the database
+    const imagePath = `/uploads/${req.file.filename}`;
+
+    res.status(200).json({ 
+      message: 'Image uploaded successfully', 
+      imagePath: imagePath 
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ message: 'Image upload failed', error: error.message });
+  }
+});
+
+router.post("/", authMiddleware, async (req, res, next) => {
+  try {
+    const { title, description, sections } = req.body;
+    
+    // Validate input
+    if (!title || !description) {
+      return res.status(400).json({ message: "Title and description are required." });
+    }
+    
+    // Create and save the course
+    const newCourse = new Course({ 
+      title, 
+      description, 
+      sections: sections.map(section => ({
+        ...section,
+        lessons: section.lessons.map(lesson => ({
+          ...lesson,
+          // Ensure image paths are correctly stored
+          description: processImagePaths(lesson.description)
+        }))
+      }))
+    });
+
+    const savedCourse = await newCourse.save();
+    res.status(201).json(savedCourse);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Helper function to process and validate image paths
+function processImagePaths(content) {
+ // Implement logic to validate and potentially sanitize image paths
+ // This could involve checking if paths are within your uploads directory
+ return content;
+}
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;

@@ -10,39 +10,65 @@ import { useNavigate } from 'react-router-dom';
 
 const CourseCard = ({ course, onEnroll, onContinueLearning }) => {
   return (
-    <div className="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-xl transition-shadow">
-      <div className="p-4 bg-teal-500 text-white flex items-center justify-between">
-        <div className="flex items-center">
-          <FontAwesomeIcon icon={faBook} size="2x" className="mr-4" />
-          <h3 className="text-xl font-semibold">{course.title}</h3>
+    <div className="group relative bg-white  shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden transform hover:-translate-y-2">
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"></div>
+      
+      {/* Header Section */}
+      <div className="relative z-10 p-4 bg-gradient-to-r from-teal-500 to-teal-600 text-white flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <FontAwesomeIcon 
+            icon={faBook} 
+            size="2x" 
+            className="opacity-80 transform transition-transform group-hover:scale-110" 
+          />
+          <h3 className="text-xl font-bold tracking-wide">{course.title}</h3>
         </div>
-        <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+        <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase">
           {course.difficulty || 'Intermediate'}
         </span>
       </div>
-      <div className="p-5">
-        <CourseContent content={course.description} />
+
+      {/* Content Section */}
+      <div className="relative z-10 p-5 space-y-4">
+        <div className="text-gray-600 leading-relaxed">
+          <CourseContent content={course.description} />
+        </div>
         
-        <div className="flex justify-between items-center mt-6">
+        {/* Action Button */}
+        <div className="mt-6 border-t border-gray-100 pt-4">
           {course.isEnrolled ? (
             <button 
-              className="flex items-center text-teal-600 hover:text-teal-800 transition-colors"
+              className="w-full flex items-center justify-between text-teal-600 hover:text-teal-800 font-semibold group/button transition-colors"
               onClick={() => onContinueLearning(course._id)}
             >
-              Continue Learning
-              <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+              <span className="group-hover/button:translate-x-1 transition-transform">
+                Continue Learning
+              </span>
+              <FontAwesomeIcon 
+                icon={faChevronRight} 
+                className="opacity-0 group-hover/button:opacity-100 transition-opacity" 
+              />
             </button>
           ) : (
             <button
               onClick={() => onEnroll(course._id)}
-              className="flex items-center text-teal-600 hover:text-teal-800 transition-colors"
+              className="w-full flex items-center justify-between text-teal-600 hover:text-teal-800 font-semibold group/button transition-colors"
             >
-              Enroll in Course
-              <FontAwesomeIcon icon={faChevronRight} className="ml-2" />
+              <span className="group-hover/button:translate-x-1 transition-transform">
+                Enroll in Course
+              </span>
+              <FontAwesomeIcon 
+                icon={faChevronRight} 
+                className="opacity-0 group-hover/button:opacity-100 transition-opacity" 
+              />
             </button>
           )}
         </div>
       </div>
+
+    
+      <div className="absolute inset-x-0 bottom-0 h-1 bg-teal-500 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
     </div>
   );
 };

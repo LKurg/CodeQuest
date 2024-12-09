@@ -8,7 +8,7 @@ import {
   CheckCircle2, 
   AlertTriangle 
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import {useAuth} from '../context/AuthContext';
 const Signup = () => {
   const [formData, setFormData] = useState({
     username: '',

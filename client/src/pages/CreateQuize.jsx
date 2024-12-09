@@ -11,6 +11,8 @@ import {
   faChevronDown,
   faTrash
 } from '@fortawesome/free-solid-svg-icons';
+import MainLayout from '../Layout/MainLayout';
+import AdminLayout from '../Layout/AdminLayout';
 
 const QuestionPreview = ({ question, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -192,6 +194,10 @@ const CreateQuiz = () => {
   };
 
   return (
+    <MainLayout>
+      <AdminLayout>
+
+   
     <div className="w-screen h-screen flex">
       <div className="w-2/3 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
@@ -341,6 +347,8 @@ const CreateQuiz = () => {
         )}
       </div>
     </div>
+    </AdminLayout>
+    </MainLayout>
   );
 };
 
