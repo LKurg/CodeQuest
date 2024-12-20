@@ -2,6 +2,8 @@ import parse, { domToReact } from 'html-react-parser';
 import DOMPurify from 'dompurify';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { materialLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { materialOceanic } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 
  const ContentRenderer = ({ content, type }) => {
@@ -14,14 +16,14 @@ import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
                 replace: (domNode) => {
                   if (domNode.name === 'pre' && domNode.attribs.class?.includes('ql-syntax')) {
                     return (
-                      <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                      <div className=" rounded-lg p-4 overflow-x-auto">
                         <SyntaxHighlighter 
                           language="php" 
-                          style={materialDark}
+                          style={materialOceanic}
                           customStyle={{
                             borderRadius: '0.5rem',
                             fontSize: '0.9rem',
-                            backgroundColor: '#1E1E1E'
+                           // backgroundColor: '#1E1E1E'
                           }}
                         >
                           {domNode.children[0]?.data || ''}

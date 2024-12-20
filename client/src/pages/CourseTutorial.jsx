@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { PremiumBanner } from '../components/PremiumBanner';
 import { faPhp } from '@fortawesome/free-brands-svg-icons';
+import useCourseAnalytics from '../hooks/useCourseAnalytics';
 import { 
   faCheckCircle, 
   faStar, 
@@ -28,7 +29,7 @@ function CourseTutorial() {
   const [isQuizMode, setIsQuizMode] = useState(false);
   const [userProgress, setUserProgress] = useState(null);
   const navigate = useNavigate();
-
+  useCourseAnalytics(courseId, activeLesson, completedLessons, userProgress);
 
   useEffect(() => {
     const fetchData = async () => {
