@@ -22,6 +22,7 @@ app.get('/', (req, res) => {
     res.send('Server is running!');
 });
 
+const adminRoutes = require('./routes/adminRoutes');
 // Health check route
 app.get('/health', (req, res) => {
     res.json({ message: 'Server is healthy and connected to MongoDB' });
@@ -33,7 +34,8 @@ app.use('/api', lipaNaMpesaRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/admin', adminRoutes);
 //app.use('/api/quests', questRoutes);
 
 // Global error handling middleware

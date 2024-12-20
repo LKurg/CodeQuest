@@ -19,9 +19,12 @@ const SubscriptionSchema = new mongoose.Schema({
 // Progress schema
 const ProgressSchema = new mongoose.Schema({
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-    currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }, 
+    currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' },
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
-    lastAccessed: { type: Date, default: Date.now },
+    startTime: { type: Date }, 
+    completionTime: { type: Date }, 
+    totalTimeSpent: { type: Number, default: 0 }, 
+    clicks: { type: Number, default: 0 },
 });
 
 // Quiz results schema
