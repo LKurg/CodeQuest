@@ -32,7 +32,12 @@ router.post('/register', async (req, res, next) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create a new user and save to the database
-        const newUser = new User({ username, email, password: hashedPassword });
+        const newUser = new User({ 
+            username, 
+            email, 
+            password: hashedPassword,
+            subscription: {} // Explicitly initialize subscription
+        });
         await newUser.save();
 
         res.status(201).json({ message: 'User registered successfully', user: newUser });
@@ -40,6 +45,7 @@ router.post('/register', async (req, res, next) => {
         next(error); // Pass errors to the global error handler
     }
 });
+
 
 router.get('/stats', authMiddleware, async (req, res) => {
     try {
@@ -345,48 +351,48 @@ router.post('/login', async (req, res, next) => {
         // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
-            console.log(`Login attempt failed: No user found with email ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
         // Compare password with hashed password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log(`Login attempt failed: Incorrect password for email ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
 
-        // Log successful login attempt
-        console.log(`Successful login for user: ${user.email}, Role: ${user.role}`);
+        // Determine subscription status
+        const subscriptionStatus = user.subscription?.type === 'premium' ? 'Premium User' : 'Free User';
 
-        // Sign the JWT token with additional user information
+        console.log(`User: ${user.email}, Subscription Status: ${subscriptionStatus}`);
+
+        // Sign the JWT token
         const token = jwt.sign(
-            { 
-                id: user._id, 
-                email: user.email, 
-                role: user.role, // Include user role
-                name: user.name // Include other user details as needed
-            }, 
-            JWT_SECRET, 
+            {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                subscription: user.subscription.type, // Include the subscription type
+            },
+            JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Send back user data along with the token
-        res.status(200).json({ 
-            message: 'Login successful', 
+        res.status(200).json({
+            message: 'Login successful',
             token,
             user: {
                 id: user._id,
                 email: user.email,
                 role: user.role,
-                name: user.name
-            }
+                subscription: subscriptionStatus,
+            },
         });
     } catch (error) {
         console.error('Login error:', error);
         next(error);
     }
 });
+
 
 // Logout a user (not much to do in this route for now)
 router.post('/logout', (req, res, next) => {

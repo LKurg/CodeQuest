@@ -5,6 +5,16 @@ const StreakSchema = new mongoose.Schema({
     days: { type: Number, default: 0 }, 
     lastActivity: { type: Date, default: Date.now }, 
 });
+const SubscriptionSchema = new mongoose.Schema({
+    type: { 
+        type: String, 
+        enum: ['free', 'premium'], 
+        default: 'free' // Default is 'free'
+    },
+    startedAt: { type: Date, default: Date.now }, // Date the subscription started
+    expiresAt: { type: Date }, // Expiry date for premium users
+});
+
 
 // Progress schema
 const ProgressSchema = new mongoose.Schema({
@@ -46,8 +56,9 @@ const UserSchema = new mongoose.Schema({
     role: { 
         type: String, 
         enum: ['user', 'admin', 'superAdmin'], 
-        default: 'user' // Default role is 'user'
-    }
+        default: 'user' 
+    },
+    subscription: SubscriptionSchema, 
 });
 
 

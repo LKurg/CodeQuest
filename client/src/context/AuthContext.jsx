@@ -20,7 +20,6 @@ const AuthProvider = ({ children }) => {
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-   
 
     if (storedToken && storedUser) {
       const isValid = validateToken(storedToken);
@@ -28,12 +27,12 @@ const AuthProvider = ({ children }) => {
         const user = JSON.parse(storedUser);
         setAuthState({
           token: storedToken,
-          user: user,
-          role: user.role, 
-        
-        },
-    
-        );
+          user: {
+            ...user,
+            subscription: user.subscription?.toLowerCase() || 'free' // Normalize subscription status
+          },
+          role: user.role,
+        });
       } else {
         logout();
       }
@@ -42,32 +41,31 @@ const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData, token) => {
-    // Log the received user data and role
-    console.log('User Data:', userData);
-    console.log('User Role:', userData.role);
-
-    const authData = {
-        user: userData,
-        token: token,
-        role: userData.role, 
+    // Normalize the subscription status to lowercase for consistent comparison
+    const normalizedUserData = {
+      ...userData,
+      subscription: userData.subscription?.toLowerCase() || 'free'
     };
 
-    console.log('Auth Data:', authData);
+    const authData = {
+      user: normalizedUserData,
+      token: token,
+      role: userData.role,
+    };
+
+  
     
     setAuthState(authData);
-    
-  
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(normalizedUserData));
     localStorage.setItem('token', token);
-    
-   
     localStorage.setItem('userRole', userData.role);
-};
+  };
 
   const logout = () => {
     setAuthState(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
   };
 
   useEffect(() => {
@@ -94,7 +92,9 @@ const AuthProvider = ({ children }) => {
         login,
         logout,
         isAuthenticated: !!authState?.token,
-        role: authState?.role, 
+        role: authState?.role,
+        isPremium: authState?.user?.subscription === 'premium',
+        subscription: authState?.user?.subscription
       }}
     >
       {children}

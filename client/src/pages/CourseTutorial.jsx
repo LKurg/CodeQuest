@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams,useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PremiumBanner } from '../components/PremiumBanner';
 import { faPhp } from '@fortawesome/free-brands-svg-icons';
 import { 
   faCheckCircle, 
@@ -12,7 +13,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import MainLayout from '../Layout/MainLayout';
 import ContentRenderer from '../components/ContentRenderer';
-
 import ProgressTracker from '../components/ProgressTracker';
 import CodeChallenge from '../components/CodeChallenge';
 import TakeQuiz from '../components/Quiz';
@@ -29,59 +29,56 @@ function CourseTutorial() {
   const [userProgress, setUserProgress] = useState(null);
   const navigate = useNavigate();
 
+
   useEffect(() => {
     const fetchData = async () => {
-        const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token');
+      
+      try {
+        const [progressResponse, courseResponse] = await Promise.all([
+          fetch(`http://localhost:5000/api/users/progress/${courseId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
+          fetch(`http://localhost:5000/api/courses/${courseId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+        ]);
+
+        const progressData = await progressResponse.json();
+        const courseData = await courseResponse.json();
+
+        setCourseData(courseData);
+        setUserProgress(progressData);
         
-        try {
-            const [progressResponse, courseResponse] = await Promise.all([
-                fetch(`http://localhost:5000/api/users/progress/${courseId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                }),
-            
-                fetch(`http://localhost:5000/api/courses/${courseId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                })
-            ]);
-    
-            const progressData = await progressResponse.json();
-            const courseData = await courseResponse.json();
-    
-            setCourseData(courseData);
-            setUserProgress(progressData);
-            console.log(progressData);
-    
-            // Use completedLessons from backend directly
-            setCompletedLessons(progressData.completedLessons || []);
-    
-            // Set initial section and lesson based on backend progress
-            const defaultSection = courseData.sections[0]?._id;
-            const progressSection = progressData?.currentSection || defaultSection;
-            setActiveSection(progressSection);
-    
-            const activeSectionLessons = courseData.sections
-                .find(section => section._id === progressSection)?.lessons;
-            
-            if (activeSectionLessons?.length) {
-                setActiveLesson(activeSectionLessons[0]._id);
-            }
-    
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            setError('Failed to load course content');
+        setCompletedLessons(progressData.completedLessons || []);
+        
+        const defaultSection = courseData.sections[0]?._id;
+        const progressSection = progressData?.currentSection || defaultSection;
+        setActiveSection(progressSection);
+
+        const activeSectionLessons = courseData.sections
+          .find(section => section._id === progressSection)?.lessons;
+        
+        if (activeSectionLessons?.length) {
+          setActiveLesson(activeSectionLessons[0]._id);
         }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load course content');
+      }
     };
     
     fetchData();
-}, [courseId]);
-const handleTakeQuiz = () => {
-  navigate(`/course/quize/${courseId}/${activeLesson}`);
+  }, [courseId]);
 
-};
+  const handleTakeQuiz = () => {
+    navigate(`/course/quize/${courseId}/${activeLesson}`);
+  };
 
   const handleLessonSuccess = () => {
     setXp(prevXp => prevXp + 100);
@@ -97,16 +94,12 @@ const handleTakeQuiz = () => {
     const currentLessonIndex = courseData.sections[currentSectionIndex].lessons
       .findIndex(l => l._id === activeLesson);
 
-    // Check if there are more lessons in the current section
     if (currentLessonIndex < courseData.sections[currentSectionIndex].lessons.length - 1) {
-      // Move to next lesson in the same section
       setActiveLesson(courseData.sections[currentSectionIndex].lessons[currentLessonIndex + 1]._id);
     } else if (currentSectionIndex < courseData.sections.length - 1) {
-      // Move to next section
       const nextSection = courseData.sections[currentSectionIndex + 1];
       setActiveSection(nextSection._id);
       
-      // Set the first lesson of the next section
       if (nextSection.lessons?.length > 0) {
         setActiveLesson(nextSection.lessons[0]._id);
       }
@@ -117,36 +110,35 @@ const handleTakeQuiz = () => {
     handleLessonSuccess();
 
     try {
-        const token = localStorage.getItem('token');
-        
-        // Determine if all lessons in the current section are completed
-        const currentSectionLessons = courseData.sections
-            .find(section => section._id === activeSection)?.lessons || [];
-        
-        const completedSectionsArray = 
-            currentSectionLessons.every(lesson => completedLessons.includes(lesson._id)) 
-                ? [activeSection.toString()] 
-                : [];
+      const token = localStorage.getItem('token');
+      
+      const currentSectionLessons = courseData.sections
+        .find(section => section._id === activeSection)?.lessons || [];
+      
+      const completedSectionsArray = 
+        currentSectionLessons.every(lesson => completedLessons.includes(lesson._id)) 
+          ? [activeSection.toString()] 
+          : [];
 
-        await fetch('http://localhost:5000/api/users/progress', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                courseId,
-                currentSection: activeSection.toString(),
-                completedSections: completedSectionsArray,
-                completedLessons: [activeLesson.toString()]
-            })
-        });
+      await fetch('http://localhost:5000/api/users/progress', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          currentSection: activeSection.toString(),
+          completedSections: completedSectionsArray,
+          completedLessons: [activeLesson.toString()]
+        })
+      });
     } catch (error) {
-        console.error('Error updating progress:', error);
+      console.error('Error updating progress:', error);
     }
 
     progressToNextSection();
-};
+  };
 
   const handleQuizComplete = (score) => {
     setXp(prevXp => prevXp + score);
@@ -232,9 +224,11 @@ const handleTakeQuiz = () => {
 
   return (
     <MainLayout>
-      <div className="flex min-h-screen bg-gray-50">
-      <div className="w-64 bg-white border-r p-6 overflow-y-auto sticky top-0 h-screen">
-
+          <div className="relative z-20"> {/* Added z-20 for premium banner container */}
+            <PremiumBanner userSubscription={userProgress?.subscription} />
+          </div>
+      <div className="flex min-h-screen bg-gray-50 relative"> {/* Added relative positioning */}
+        <div className="w-64 bg-white border-r p-6 overflow-y-auto sticky top-0 h-screen z-10"> {/* Added z-10 */}
           <div className="flex flex-col mb-8">
             <div className="flex items-center mb-4">
               <FontAwesomeIcon 
@@ -255,68 +249,68 @@ const handleTakeQuiz = () => {
           </div>
 
           {courseData.sections.map((section) => (
-  <div key={section._id} className="mb-6">
-    <div 
-      onClick={() => setActiveSection(section._id)}
-      className={`cursor-pointer p-3 rounded-lg transition duration-300 ${
-        activeSection === section._id 
-          ? 'bg-teal-100 text-teal-800' 
-          : 'hover:bg-gray-100'
-      }`}
-    >
-      <h3 className="font-semibold">{section.title}</h3>
-    </div>
-
-    {activeSection === section._id && (
-      <div className="mt-2 space-y-2">
-        {section.lessons.map((lesson, index) => {
-          // Determine if lesson should be unlocked
-          const isUnlocked = 
-            index === 0 || // First lesson always unlocked
-            completedLessons.includes(section.lessons[index - 1]._id);
-
-          return (
-            <div 
-              key={lesson._id} 
-              onClick={() => isUnlocked && setActiveLesson(lesson._id)}
-              className={`flex items-center p-2 rounded-lg transition duration-300 ${
-                !isUnlocked 
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'cursor-pointer hover:bg-gray-100'
-              } ${
-                activeLesson === lesson._id 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : ''
-              }`}
-            >
-              <FontAwesomeIcon 
-                icon={
-                  completedLessons.includes(lesson._id) 
-                    ? faCheckCircle 
-                    : (isUnlocked ? faStar : faLock)
-                }
-                className={`mr-2 transition duration-300 ${
-                  completedLessons.includes(lesson._id) 
-                    ? 'text-green-500' 
-                    : (isUnlocked ? 'text-yellow-500' : 'text-gray-400')
+            <div key={section._id} className="mb-6">
+              <div 
+                onClick={() => setActiveSection(section._id)}
+                className={`cursor-pointer p-3 rounded-lg transition duration-300 ${
+                  activeSection === section._id 
+                    ? 'bg-teal-100 text-teal-800' 
+                    : 'hover:bg-gray-100'
                 }`}
-              />
-              <span>{lesson.title}</span>
-            </div>
-          );
-        })}
-      </div>
-    )}
-  </div>
-))}
-        </div>
+              >
+                <h3 className="font-semibold">{section.title}</h3>
+              </div>
 
-        <div className="flex-1 p-6 bg-white overflow-auto relative">
+              {activeSection === section._id && (
+                <div className="mt-2 space-y-2">
+                  {section.lessons.map((lesson, index) => {
+                    const isUnlocked = 
+                      index === 0 || 
+                      completedLessons.includes(section.lessons[index - 1]._id);
+
+                    return (
+                      <div 
+                        key={lesson._id} 
+                        onClick={() => isUnlocked && setActiveLesson(lesson._id)}
+                        className={`flex items-center p-2 rounded-lg transition duration-300 ${
+                          !isUnlocked 
+                            ? 'opacity-50 cursor-not-allowed' 
+                            : 'cursor-pointer hover:bg-gray-100'
+                        } ${
+                          activeLesson === lesson._id 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : ''
+                        }`}
+                      >
+                        <FontAwesomeIcon 
+                          icon={
+                            completedLessons.includes(lesson._id) 
+                              ? faCheckCircle 
+                              : (isUnlocked ? faStar : faLock)
+                          }
+                          className={`mr-2 transition duration-300 ${
+                            completedLessons.includes(lesson._id) 
+                              ? 'text-green-500' 
+                              : (isUnlocked ? 'text-yellow-500' : 'text-gray-400')
+                          }`}
+                        />
+                        <span>{lesson.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+      
+        </div>
+        
+        <div className="flex-1 p-6 bg-white overflow-auto relative z-0"> {/* Added z-0 */}
           {isQuizMode ? (
             <TakeQuiz 
-            activeLesson={activeLesson.toString()} 
-            onQuizComplete={handleQuizComplete} 
-          />
+              activeLesson={activeLesson.toString()} 
+              onQuizComplete={handleQuizComplete} 
+            />
           ) : (
             <>
               {activeLesson ? renderLessonContent() : (
@@ -326,13 +320,13 @@ const handleTakeQuiz = () => {
               )}
 
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-              <button 
-      onClick={handleTakeQuiz}
-      className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
-    >
-      <FontAwesomeIcon icon={faCode} className="mr-2" />
-      Take  Quiz
-    </button>
+                <button 
+                  onClick={handleTakeQuiz}
+                  className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
+                >
+                  <FontAwesomeIcon icon={faCode} className="mr-2" />
+                  Take Quiz
+                </button>
               </div>
             </>
           )}

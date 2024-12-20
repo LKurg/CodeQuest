@@ -5,6 +5,7 @@ const connectDB = require('./connection');
 const userRoutes = require('./routes/users'); // Import user routes
 
 const courseRoutes = require('./routes/courses');
+const lipaNaMpesaRoutes=require('./routes/lipanampesa')
 const quizRoutes = require('./routes/quiz');
 const app = express();
 const PORT = 5000;
@@ -28,6 +29,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/users', userRoutes);
+app.use('/api', lipaNaMpesaRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
