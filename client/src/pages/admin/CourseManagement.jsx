@@ -63,10 +63,7 @@ const CourseCard = ({ course }) => {
               <p className="text-sm text-gray-600">Students</p>
               <p className="font-bold text-gray-900">{course.stats.students}</p>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Hours</p>
-              <p className="font-bold text-gray-900">{course.stats.hours}</p>
-            </div>
+
             <div className="text-center">
               <p className="text-sm text-gray-600">Rating</p>
               <p className="font-bold text-gray-900">{course.stats.rating}/5</p>

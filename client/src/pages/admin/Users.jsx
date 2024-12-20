@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faSearch, 
@@ -54,7 +54,7 @@ const UserCard = ({ user }) => (
       <div className="flex gap-4">
         <div className="relative">
           <img
-            src={user.avatar}
+            src={user.avatar || '/api/placeholder/150/150'}
             alt={user.name}
             className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-500"
           />
@@ -75,7 +75,7 @@ const UserCard = ({ user }) => (
           <div className="flex items-center gap-3 mt-2">
             <CodingLevel level={user.skills.frontend} title="Frontend" />
             <CodingLevel level={user.skills.backend} title="Backend" />
-            <CodingLevel level={user.skills.algorithms} title="Algorithms" />
+    
           </div>
         </div>
       </div>
@@ -95,10 +95,9 @@ const UserCard = ({ user }) => (
 
     <div className="mt-4 flex justify-between items-center">
       <div className="flex gap-2">
-        <AchievementBadge icon={faTrophy} color="bg-yellow-500" count={user.achievements} />
-        <AchievementBadge icon={faFire} color="bg-red-500" count={user.streak} />
-        <AchievementBadge icon={faGem} color="bg-purple-500" count={user.gems} />
-        <AchievementBadge icon={faCodeBranch} color="bg-green-500" count={user.completedQuests} />
+
+
+
       </div>
       <div className="flex gap-2">
         <button className="px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -113,80 +112,63 @@ const UserCard = ({ user }) => (
 );
 
 const Users = () => {
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState({
+    activeQuesters: 0,
+    questsCompleted: 0,
+    learningHours: 0,
+    avgCompletion: 0
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const users = [
-    {
-      id: 1,
-      name: 'Alex Chen',
-      title: 'Full Stack Explorer',
-      level: 42,
-      isPro: true,
-      skills: {
-        frontend: 8,
-        backend: 7,
-        algorithms: 6
-      },
-      currentQuest: {
-        name: 'Advanced API Design',
-        progress: 75
-      },
-      achievements: 48,
-      streak: 12,
-      gems: 1250,
-      completedQuests: 86,
-      avatar: '/api/placeholder/150/150'
-    },
-    {
-      id: 2,
-      name: 'Sarah Miller',
-      title: 'Algorithm Master',
-      level: 38,
-      isPro: false,
-      skills: {
-        frontend: 5,
-        backend: 6,
-        algorithms: 9
-      },
-      currentQuest: {
-        name: 'Dynamic Programming',
-        progress: 90
-      },
-      achievements: 35,
-      streak: 8,
-      gems: 890,
-      completedQuests: 64,
-      avatar: '/api/placeholder/150/150'
-    },
-    {
-      id: 3,
-      name: 'James Rodriguez',
-      title: 'Frontend Warrior',
-      level: 29,
-      isPro: true,
-      skills: {
-        frontend: 9,
-        backend: 4,
-        algorithms: 5
-      },
-      currentQuest: {
-        name: 'React Performance',
-        progress: 45
-      },
-      achievements: 27,
-      streak: 15,
-      gems: 720,
-      completedQuests: 52,
-      avatar: '/api/placeholder/150/150'
-    }
-  ];
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
+        
+        const response = await fetch(
+          `http://localhost:5000/api/admin/users/analytics?page=${page}&search=${searchTerm}&skillLevel=${filter}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        const data = await response.json();
+        setUsers(data.users);
+        setStats(data.dashboardStats);
+        setTotalPages(data.pagination.pages);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [page, searchTerm, filter]);
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="text-red-500 text-center p-4">
+          Error: {error}
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -209,7 +191,7 @@ const Users = () => {
                 <FontAwesomeIcon icon={faTerminal} className="text-blue-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Active Questers</p>
-                  <p className="text-xl font-bold text-gray-900">1,247</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.activeQuesters.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -218,7 +200,7 @@ const Users = () => {
                 <FontAwesomeIcon icon={faTrophy} className="text-purple-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Quests Completed</p>
-                  <p className="text-xl font-bold text-gray-900">8,392</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.questsCompleted.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -227,7 +209,7 @@ const Users = () => {
                 <FontAwesomeIcon icon={faGraduationCap} className="text-green-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Learning Hours</p>
-                  <p className="text-xl font-bold text-gray-900">24,180</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.learningHours.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -236,7 +218,7 @@ const Users = () => {
                 <FontAwesomeIcon icon={faChartLine} className="text-yellow-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Avg. Completion</p>
-                  <p className="text-xl font-bold text-gray-900">87%</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.avgCompletion}%</p>
                 </div>
               </div>
             </div>
@@ -269,34 +251,38 @@ const Users = () => {
               <option value="intermediate">Intermediate</option>
               <option value="advanced">Advanced</option>
             </select>
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Paths</option>
-              <option value="frontend">Frontend</option>
-              <option value="backend">Backend</option>
-              <option value="fullstack">Full Stack</option>
-            </select>
           </div>
         </div>
 
         {/* User Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredUsers.map(user => (
-            <UserCard key={user.id} user={user} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-8">Loading...</div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {users.map(user => (
+              <UserCard key={user._id} user={user} />
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
         <div className="flex justify-between items-center pt-4">
           <p className="text-sm text-gray-500">
-            Showing {filteredUsers.length} of {users.length} questers
+            Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <button 
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={page === 1}
+              onClick={() => setPage(prev => Math.max(1, prev - 1))}
+            >
               Previous
             </button>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={page === totalPages}
+              onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+            >
               Next
             </button>
           </div>
