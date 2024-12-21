@@ -12,34 +12,22 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/" />;
   }
 
-  // If requiredRole is undefined, allow access for all authenticated users
-  if (requiredRole === undefined) {
-    return children;
-  }
-
   const normalizedRole = role.trim().toLowerCase();
-  const normalizedRequiredRole = requiredRole.trim().toLowerCase();
 
-  // If the required role is 'user'
-  if (normalizedRequiredRole === 'user') {
-    // Allow both users and admins, but redirect admin to admin dashboard
-    if (normalizedRole === 'admin') {
-      return <Navigate to="/admin/create-tutorial" />;
-    }
-    return children;
+  // If user is admin and trying to access user routes, redirect to admin dashboard
+  if (normalizedRole === 'admin' && !requiredRole) {
+    return <Navigate to="/admin/dashboard" />;
   }
 
-  // For admin-specific routes
-  if (normalizedRequiredRole === 'admin') {
-    if (normalizedRole !== 'admin') {
-      return <Navigate to="/dashboard" />;
+  // If requiredRole is specified, check for role match
+  if (requiredRole) {
+    const normalizedRequiredRole = requiredRole.trim().toLowerCase();
+    
+    if (normalizedRole !== normalizedRequiredRole) {
+      // If user isn't admin, redirect to user dashboard
+      // If admin isn't authorized for this specific route, redirect to admin dashboard
+      return <Navigate to={normalizedRole === 'admin' ? "/admin/dashboard" : "/dashboard"} />;
     }
-    return children;
-  }
-
-  // For any other role-specific routes
-  if (normalizedRole !== normalizedRequiredRole) {
-    return <Navigate to="/dashboard" />;
   }
 
   return children;
