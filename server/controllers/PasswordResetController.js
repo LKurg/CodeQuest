@@ -3,7 +3,8 @@ const { User } = require('../models/User');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs'); 
 
-// Send Reset Token
+const { getPasswordResetTemplate } = require('../emails/passwordReset');
+
 const SendResetToken = async (req, res) => {
     console.log('SendResetToken called');
     const { email } = req.body;
@@ -31,11 +32,8 @@ const SendResetToken = async (req, res) => {
         // Frontend reset URL
         const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
-        // Send email with reset link
-        const htmlContent = `
-            <h2>Password Reset Request</h2>
-            <p>Click <a href="${resetURL}">here</a> to reset your password. The link will expire in 1 hour.</p>
-        `;
+        // Get the HTML template with the reset URL
+        const htmlContent = getPasswordResetTemplate(resetURL, process.env.COMPANY_NAME);
 
         await sendEmail(user.email, 'Password Reset Request', '', htmlContent);
 
@@ -45,6 +43,7 @@ const SendResetToken = async (req, res) => {
         res.status(500).json({ message: 'Error sending reset email', error: err.message });
     }
 };
+
 
 // Reset Password
 const ResetPassword = async (req, res) => {
