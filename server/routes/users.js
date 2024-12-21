@@ -1,5 +1,6 @@
 const express = require('express');
 const { User } = require('../models/User');
+const {Login, Logout}= require('../controllers/AuthenticatedSessionController');
 
 
 
@@ -10,6 +11,9 @@ const authMiddleware = require('../middleware/auth');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { logRecentActivity } = require('../services/activityService');
+const { Signup } = require('../controllers/SignupController');
+const { getUserProgress, postStreak, getStreak, GetDetailedProgress } = require('../controllers/UserProgressController');
+const { getProfile } = require('../controllers/ProfileController');
 
 
 
@@ -18,34 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 
 // Register a new user
-router.post('/register', async (req, res, next) => {
-    const { username, email, password } = req.body;
-
-    try {
-        // Check if the user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ error: 'Email already in use' });
-        }
-
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create a new user and save to the database
-        const newUser = new User({ 
-            username, 
-            email, 
-            password: hashedPassword,
-            subscription: {} // Explicitly initialize subscription
-        });
-        await newUser.save();
-
-        res.status(201).json({ message: 'User registered successfully', user: newUser });
-    } catch (error) {
-        next(error); // Pass errors to the global error handler
-    }
-});
-
+router.post('/register',Signup);
 
 router.get('/stats', authMiddleware, async (req, res) => {
     try {
@@ -64,139 +41,15 @@ router.get('/stats', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Error fetching stats', error: error.message });
     }
 });
-router.get('/recent-activities', authMiddleware, async (req, res) => {
-    try {
-        const userId = req.user.id;
 
-        // Fetch recent activities, populated with course and lesson details
-        const activities = await RecentActivity.find({ userId })
-            .sort({ timestamp: -1 }) // Sort by most recent first
-            .limit(20) // Limit to 20 recent activities
-            .populate('courseId', 'title') // Populate course titles
-            .populate('lessonId', 'title'); // Populate lesson titles
 
-        // Transform for frontend
-        const formattedActivities = activities.map(activity => ({
-            id: activity._id,
-            type: activity.type,
-            description: activity.description,
-            courseTitle: activity.courseId ? activity.courseId.title : null,
-            lessonTitle: activity.lessonId ? activity.lessonId.title : null,
-            xpEarned: activity.xpEarned,
-            timestamp: activity.timestamp,
-            relativeTime: getRelativeTime(activity.timestamp),
-        }));
 
-        res.json(formattedActivities);
-    } catch (error) {
-        console.error('Error fetching recent activities:', error);
-        res.status(500).json({ message: 'Failed to fetch recent activities' });
-    }
-});
 
-// Helper function for relative time
-function getRelativeTime(timestamp) {
-    const now = new Date();
-    const diffInMilliseconds = now - timestamp;
-    const diffInMinutes = diffInMilliseconds / (1000 * 60);
-    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
-    const diffInDays = diffInMilliseconds / (1000 * 60 * 60 * 24);
 
-    if (diffInMinutes < 1) return 'just now';
-    if (diffInMinutes < 60) return `${Math.round(diffInMinutes)} minutes ago`;
-    if (diffInHours < 24) return `${Math.round(diffInHours)} hours ago`;
-    return `${Math.round(diffInDays)} days ago`;
-}
+router.get('/detailed-progress', authMiddleware, GetDetailedProgress);
 
-router.get('/detailed-progress', authMiddleware, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const user = await User.findById(userId);
-        
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
 
-        // Fetch all enrolled courses with progress
-        const enrolledCourses = await Promise.all(user.progress.map(async (progress) => {
-            const course = await Course.findById(progress.courseId).populate({
-                path: 'sections',
-                populate: { path: 'lessons' }
-            });
 
-            if (!course) return null;
-
-            // Calculate total and completed lessons
-            const totalLessons = course.sections.reduce(
-                (count, section) => count + section.lessons.length, 
-                0
-            );
-            const completedLessons = progress.completedLessons.length;
-            const progressPercentage = ((completedLessons / totalLessons) * 100).toFixed(2);
-
-            return {
-                _id: course._id,
-                title: course.title,
-                progressPercentage: parseFloat(progressPercentage),
-                completedLessons,
-                totalLessons
-            };
-        })).then(courses => courses.filter(Boolean));
-
-        // Calculate overall progress
-        const overallProgress = enrolledCourses.length > 0
-            ? (enrolledCourses.reduce((sum, course) => sum + course.progressPercentage, 0) / enrolledCourses.length).toFixed(2)
-            : 0;
-
-        // Dynamically calculate skill progress based on completed courses
-        const skillProgress = await calculateSkillProgress(user, enrolledCourses);
-
-        // Dynamically generate achievements
-        const achievements = await generateAchievements(user, enrolledCourses);
-
-        // Prepare final response
-        const response = {
-            courses: enrolledCourses,
-            overallProgress: parseFloat(overallProgress),
-            totalCoursesCompleted: enrolledCourses.filter(course => course.progressPercentage === 100).length,
-            totalXP: user.xp || 0,
-            skillProgress,
-            achievements
-        };
-
-        res.status(200).json(response);
-    } catch (error) {
-        console.error('Error fetching detailed progress:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Helper function to calculate skill progress dynamically
-async function calculateSkillProgress(user, enrolledCourses) {
-    // This could be expanded to use more sophisticated tracking
-    const skillMap = {
-        'Python': ['Learn Python'],
-        'JavaScript': ['JavaScript Fundamentals'],
-        'React': ['React Basics']
-    };
-
-    const skillProgress = Object.entries(skillMap).map(([skill, courseTitles]) => {
-        const relevantCourses = enrolledCourses.filter(course => 
-            courseTitles.includes(course.title)
-        );
-
-        const averageProgress = relevantCourses.length > 0
-            ? relevantCourses.reduce((sum, course) => sum + course.progressPercentage, 0) / relevantCourses.length
-            : 0;
-
-        return {
-            name: skill,
-            percentage: Math.round(averageProgress)
-        };
-    });
-
-    return skillProgress;
-}
 
 // Helper function to generate achievements dynamically
 async function generateAchievements(user, enrolledCourses) {
@@ -344,64 +197,12 @@ function isConsecutiveDay(lastActivity) {
   );
 }
 
-router.post('/login', async (req, res, next) => {
-    const { email, password } = req.body;
+router.post('/login',Login)
 
-    try {
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid email or password' });
-        }
-
-        // Compare password with hashed password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: 'Invalid email or password' });
-        }
-
-        // Determine subscription status
-        const subscriptionStatus = user.subscription?.type === 'premium' ? 'Premium User' : 'Free User';
-
-        console.log(`User: ${user.email}, Subscription Status: ${subscriptionStatus}`);
-
-        // Sign the JWT token
-        const token = jwt.sign(
-            {
-                id: user._id,
-                email: user.email,
-                role: user.role,
-                subscription: user.subscription.type, // Include the subscription type
-            },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-                role: user.role,
-                subscription: subscriptionStatus,
-            },
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        next(error);
-    }
-});
 
 
 // Logout a user (not much to do in this route for now)
-router.post('/logout', (req, res, next) => {
-    try {
-        res.status(200).json({ message: 'Logout successful' });
-    } catch (error) {
-        next(error); // Pass errors to the global error handler
-    }
-});
+router.post('/logout',Logout);
 router.post('/progress', authMiddleware, async (req, res, next) => {
     const userId = req.user.id; // Extract user ID from authMiddleware
     const { courseId, currentLesson, completedLessons } = req.body;
@@ -526,149 +327,18 @@ router.get('/quiz-results/:userId/:courseId', async (req, res, next) => {
         next(error);
     }
 });
-router.get('/progress', authMiddleware, async (req, res) => {
-    try {
-        console.log('Request received to /progress');
-        const user = await User.findById(req.user.id);
-        if (!user) {
-          
-            return res.status(404).json({ error: 'User not found' });
-        }
-     
+router.get('/progress', authMiddleware,getUserProgress);
 
-        // Populate progress with full course, sections, and lessons
-        const populatedProgress = await Promise.all(user.progress.map(async (progress) => {
-            try {
-             
-
-                // Fetch course with sections and lessons
-                const course = await Course.findById(progress.courseId)
-                    .populate({
-                        path: 'sections',
-                        populate: {
-                            path: 'lessons'
-                        }
-                    });
-
-                if (!course) {
-                    console.log('Course not found for ID:', progress.courseId);
-                    return null;
-                }
-
-                console.log('Course found:', course.title);
-
-                // Calculate total lessons and completed lessons
-                const totalLessons = course.sections.reduce(
-                    (count, section) => count + section.lessons.length,
-                    0
-                );
-
-                const completedLessons = progress.completedLessons.length;
-
-                // Progress percentage
-                const progressPercentage = ((completedLessons / totalLessons) * 100).toFixed(2);
-
-                // Determine the next lesson
-                let nextLesson = null;
-                const completedLessonsSet = new Set(progress.completedLessons.map(id => id.toString()));
-
-                for (const section of course.sections) {
-                    for (const lesson of section.lessons) {
-                        if (!completedLessonsSet.has(lesson._id.toString())) {
-                            nextLesson = lesson;
-                            break;
-                        }
-                    }
-                    if (nextLesson) break;
-                }
-
-                return {
-                    courseId: course._id,
-                    courseTitle: course.title,
-                    totalLessons,
-                    completedLessons,
-                    progressPercentage,
-                    nextLesson: nextLesson
-                        ? {
-                              _id: nextLesson._id,
-                              title: nextLesson.title
-                          }
-                        : null, // No next lesson means course is fully completed
-                };
-            } catch (err) {
-                console.error('Error processing progress for courseId:', progress.courseId, err);
-                return null;
-            }
-        }));
-
-        // Filter out any null results
-        const filteredProgress = populatedProgress.filter(p => p !== null);
-      
-
-        res.status(200).json(filteredProgress);
-    } catch (error) {
-        console.error('Error fetching progress:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
 
   
   // GET /api/users/progress
-  router.get('/profile', authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+  router.get('/profile', authMiddleware,getProfile)
 
 // Update streak (track consecutive days of activity)
-router.post('/streak', async (req, res, next) => {
-    const { userId } = req.body;
-
-    try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        const today = new Date().toISOString().split('T')[0];
-        const lastActivity = new Date(user.streak.lastActivity).toISOString().split('T')[0];
-
-        if (today === lastActivity) {
-            // Activity already logged today
-            res.status(200).json({ message: 'Streak already updated today', streak: user.streak });
-        } else if (new Date(today) - new Date(lastActivity) === 86400000) {
-            // Increment streak if consecutive day
-            user.streak.days += 1;
-        } else {
-            // Reset streak if not consecutive
-            user.streak.days = 1;
-        }
-
-        user.streak.lastActivity = new Date();
-        await user.save();
-        res.status(200).json({ message: 'Streak updated successfully', streak: user.streak });
-    } catch (error) {
-        next(error);
-    }
-});
+router.post('/streak',authMiddleware,postStreak);
 
 // Get streak of a user
-router.get('/streak/:userId', async (req, res, next) => {
-    const { userId } = req.params;
-
-    try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        res.status(200).json(user.streak);
-    } catch (error) {
-        next(error);
-    }
-});
+router.get('/streak/:userId',getStreak);
 
 router.get('/active-courses', authMiddleware, async (req, res) => {
     try {

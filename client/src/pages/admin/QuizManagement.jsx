@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useNavigate } from 'react-router-dom';
 import { 
   faPlus,
   faEdit,
@@ -17,22 +18,23 @@ import {
 import AdminLayout from '../../Layout/AdminLayout';
 
 const QuizCard = ({ quiz }) => {
-  const passRate = Math.floor(Math.random() * 30) + 70; // Simulated pass rate
-  const attempts = Math.floor(Math.random() * 1000) + 100; // Simulated attempts
+  const { metrics, performance, courseInfo } = quiz;
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-all border-2 border-transparent hover:border-purple-500">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="font-bold text-lg text-gray-900">PHP Fundamentals Quiz</h3>
-          <p className="text-sm text-gray-500">{quiz.questions.length} Questions</p>
+          <h3 className="font-bold text-lg text-gray-900">
+            {courseInfo?.courseTitle || 'Untitled Quiz'}
+          </h3>
+          <p className="text-sm text-gray-500">{quiz.metrics?.totalQuestions || 0} Questions</p>
         </div>
         <div className="flex gap-2">
           <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
             Multiple Choice
           </span>
           <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-            Backend
+            {courseInfo?.sectionTitle || 'General'}
           </span>
         </div>
       </div>
@@ -40,32 +42,32 @@ const QuizCard = ({ quiz }) => {
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <p className="text-sm text-gray-600">Pass Rate</p>
-          <p className="text-xl font-bold text-green-600">{passRate}%</p>
+          <p className="text-xl font-bold text-green-600">{metrics?.passRate || 0}%</p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-center">
           <p className="text-sm text-gray-600">Attempts</p>
-          <p className="text-xl font-bold text-blue-600">{attempts}</p>
+          <p className="text-xl font-bold text-blue-600">{metrics?.totalAttempts || 0}</p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-center">
-          <p className="text-sm text-gray-600">Avg. Time</p>
-          <p className="text-xl font-bold text-purple-600">4:30</p>
+          <p className="text-sm text-gray-600">Avg Score</p>
+          <p className="text-xl font-bold text-yellow-600">{metrics?.averageScore || 0}%</p>
         </div>
       </div>
 
       <div className="space-y-2">
-        {quiz.questions.slice(0, 2).map((question, index) => (
+        {performance?.questions?.slice(0, 2).map((question, index) => (
           <div key={index} className="bg-gray-50 rounded-lg p-3">
             <div className="flex justify-between">
               <p className="text-sm text-gray-700 truncate">{question.questionText}</p>
               <span className="text-xs text-gray-500">
-                {question.choices.filter(c => c.isCorrect).length} correct
+                {question.successRate}% success rate
               </span>
             </div>
           </div>
         ))}
-        {quiz.questions.length > 2 && (
+        {(performance?.questions?.length > 2) && (
           <p className="text-sm text-gray-500 text-center">
-            +{quiz.questions.length - 2} more questions
+            +{performance.questions.length - 2} more questions
           </p>
         )}
       </div>
@@ -89,102 +91,90 @@ const QuizCard = ({ quiz }) => {
   );
 };
 
-const CreateQuizModal = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
-        <h2 className="text-xl font-bold mb-4">Create New Quiz</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quiz Title
-            </label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-              placeholder="Enter quiz title"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-              <option>Frontend Development</option>
-              <option>Backend Development</option>
-              <option>Algorithms</option>
-              <option>Database Design</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Difficulty Level
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center">
-                <input type="radio" name="difficulty" className="mr-2" />
-                Beginner
-              </label>
-              <label className="flex items-center">
-                <input type="radio" name="difficulty" className="mr-2" />
-                Intermediate
-              </label>
-              <label className="flex items-center">
-                <input type="radio" name="difficulty" className="mr-2" />
-                Advanced
-              </label>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                Create Quiz
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const QuizManagement = () => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
+  const [quizzes, setQuizzes] = useState([]);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    totalQuestions: 0,
+    totalAttempts: 0,
+    averagePassRate: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const navigate = useNavigate();
 
-  // Sample quiz data based on your structure
-  const quizzes = [
-    {
-      _id: "6755c19d2fdba95db7fcfec9",
-      lessonId: "6755bff32fdba95db7fcfe7a",
-      questions: [
-        {
-          questionText: "What does PHP stand for",
-          questionType: "multipleChoice",
-          choices: [
-            { text: "Private Home Page", isCorrect: false },
-            { text: "PHP Hypertext Preprocessor", isCorrect: true },
-            { text: "Personal Hypertext Processor", isCorrect: false },
-            { text: "None of the above", isCorrect: false }
-          ],
-          correctChoice: 1
-        },
-        // ... other questions from your data
-      ]
-    }
-  ];
+  useEffect(() => {
+    const fetchQuizData = async () => {
+      try {
+        const token = localStorage.getItem('token'); // Get token from localStorage
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await fetch('http://localhost:5000/api/admin/quiz/data', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch quiz data');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          setQuizzes(data.data);
+          setStats(data.stats);
+        } else {
+          throw new Error(data.message || 'Failed to fetch quiz data');
+        }
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching quiz data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuizData();
+  }, []);
+
+  const handleClick = () => {
+    navigate('/admin/create-quize');
+  };
+
+  // Filter quizzes based on search term
+  const filteredQuizzes = quizzes.filter(quiz => {
+    const searchMatch = quiz.courseInfo?.courseTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       quiz.courseInfo?.sectionTitle?.toLowerCase().includes(searchTerm.toLowerCase());
+    const filterMatch = filter === 'all' || quiz.courseInfo?.sectionTitle?.toLowerCase() === filter;
+    return searchMatch && filterMatch;
+  });
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-lg text-gray-600">Loading quiz data...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-lg text-red-600">Error: {error}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -197,7 +187,7 @@ const QuizManagement = () => {
               <p className="text-gray-500">Create and manage coding quizzes</p>
             </div>
             <button 
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleClick}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
             >
               <FontAwesomeIcon icon={faPlus} className="mr-2" />
@@ -211,7 +201,7 @@ const QuizManagement = () => {
                 <FontAwesomeIcon icon={faGamepad} className="text-purple-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Total Quizzes</p>
-                  <p className="text-xl font-bold text-gray-900">24</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.totalQuizzes}</p>
                 </div>
               </div>
             </div>
@@ -220,7 +210,7 @@ const QuizManagement = () => {
                 <FontAwesomeIcon icon={faQuestionCircle} className="text-blue-500 text-xl" />
                 <div>
                   <p className="text-sm text-gray-600">Total Questions</p>
-                  <p className="text-xl font-bold text-gray-900">312</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.totalQuestions}</p>
                 </div>
               </div>
             </div>
@@ -228,8 +218,8 @@ const QuizManagement = () => {
               <div className="flex items-center gap-3">
                 <FontAwesomeIcon icon={faTrophy} className="text-green-500 text-xl" />
                 <div>
-                  <p className="text-sm text-gray-600">Completion Rate</p>
-                  <p className="text-xl font-bold text-gray-900">84%</p>
+                  <p className="text-sm text-gray-600">Total Attempts</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.totalAttempts}</p>
                 </div>
               </div>
             </div>
@@ -237,8 +227,8 @@ const QuizManagement = () => {
               <div className="flex items-center gap-3">
                 <FontAwesomeIcon icon={faChartLine} className="text-yellow-500 text-xl" />
                 <div>
-                  <p className="text-sm text-gray-600">Avg. Score</p>
-                  <p className="text-xl font-bold text-gray-900">76%</p>
+                  <p className="text-sm text-gray-600">Avg. Pass Rate</p>
+                  <p className="text-xl font-bold text-gray-900">{stats.averagePassRate}%</p>
                 </div>
               </div>
             </div>
@@ -284,15 +274,10 @@ const QuizManagement = () => {
 
         {/* Quiz Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {quizzes.map(quiz => (
+          {filteredQuizzes.map(quiz => (
             <QuizCard key={quiz._id} quiz={quiz} />
           ))}
         </div>
-
-        <CreateQuizModal 
-          isOpen={showCreateModal} 
-          onClose={() => setShowCreateModal(false)} 
-        />
       </div>
     </AdminLayout>
   );
