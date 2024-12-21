@@ -20,6 +20,9 @@ import CourseManagement from './pages/admin/CourseManagement';
 import LandingPage from './pages/LandingPage';
 import UpgradePage from './pages/UpgradePage';
 import SubscriptionSuccess from './components/SubscriptionSuccess';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
 function App() {
   
   return (
@@ -37,6 +40,11 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+        path='/forgot-password'
+        element={<ForgotPassword/>}
+        /> 
+        <Route path='/reset-password/:token' element={<ResetPassword/>}/>
         <Route
           path="/upgrade"
           element={

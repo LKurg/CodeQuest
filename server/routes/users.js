@@ -14,6 +14,7 @@ const { logRecentActivity } = require('../services/activityService');
 const { Signup } = require('../controllers/SignupController');
 const { getUserProgress, postStreak, getStreak, GetDetailedProgress } = require('../controllers/UserProgressController');
 const { getProfile } = require('../controllers/ProfileController');
+const { ResetPassword } = require('../controllers/PasswordResetController');
 
 
 
@@ -42,6 +43,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/reset-password/:token',ResetPassword );
 
 
 

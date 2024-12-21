@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const connectDB = require('./connection');
 const userRoutes = require('./routes/users'); // Import user routes
+const emailRoutes = require('./routes/emailRoutes');
 
 const courseRoutes = require('./routes/courses');
 const lipaNaMpesaRoutes=require('./routes/lipanampesa')
@@ -36,6 +37,7 @@ app.use('/api/quiz', quizRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/admin', adminRoutes);
+app.use('/api/email', emailRoutes);
 //app.use('/api/quests', questRoutes);
 
 // Global error handling middleware

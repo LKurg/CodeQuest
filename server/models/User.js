@@ -5,6 +5,7 @@ const StreakSchema = new mongoose.Schema({
     days: { type: Number, default: 0 }, 
     lastActivity: { type: Date, default: Date.now }, 
 });
+
 const SubscriptionSchema = new mongoose.Schema({
     type: { 
         type: String, 
@@ -14,7 +15,6 @@ const SubscriptionSchema = new mongoose.Schema({
     startedAt: { type: Date, default: Date.now }, // Date the subscription started
     expiresAt: { type: Date }, // Expiry date for premium users
 });
-
 
 // Progress schema
 const ProgressSchema = new mongoose.Schema({
@@ -46,10 +46,13 @@ const EnrolledCourseSchema = new mongoose.Schema({
     isEnrolled: { type: Boolean, default: false },
 });
 
+// User schema with reset token fields added
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    resetPasswordToken: { type: String }, // Token for password reset
+    resetPasswordExpire: { type: Date }, // Expiration time for reset token
     enrolledCourses: [EnrolledCourseSchema],
     progress: [ProgressSchema],
     quizResults: [QuizResultSchema],
@@ -63,8 +66,6 @@ const UserSchema = new mongoose.Schema({
     },
     subscription: SubscriptionSchema, 
 });
-
-
 
 const User = mongoose.model('User', UserSchema);
 
