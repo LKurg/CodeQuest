@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faSearch, 
@@ -48,68 +49,74 @@ const CodingLevel = ({ level, title }) => (
   </div>
 );
 
-const UserCard = ({ user }) => (
-  <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500">
-    <div className="flex items-start justify-between">
-      <div className="flex gap-4">
-        <div className="relative">
-          <img
-            src={user.avatar || '/api/placeholder/150/150'}
-            alt={user.name}
-            className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-500"
-          />
-          <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-            Lvl {user.level}
-          </span>
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-gray-900">{user.name}</h3>
-            {user.isPro && (
-              <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full">
-                PRO
-              </span>
-            )}
+const UserCard = ({ user }) => {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    navigate(`/admin/users/${user._id}`);
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-all border-2 border-transparent hover:border-blue-500">
+      <div className="flex items-start justify-between">
+        <div className="flex gap-4">
+          <div className="relative">
+            <img
+              src={user.avatar || '/api/placeholder/150/150'}
+              alt={user.name}
+              className="w-16 h-16 rounded-full object-cover ring-2 ring-blue-500"
+            />
+            <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+              Lvl {user.level}
+            </span>
           </div>
-          <p className="text-sm text-gray-500">{user.title}</p>
-          <div className="flex items-center gap-3 mt-2">
-            <CodingLevel level={user.skills.frontend} title="Frontend" />
-            <CodingLevel level={user.skills.backend} title="Backend" />
-    
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900">{user.name}</h3>
+              {user.isPro && (
+                <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-1 rounded-full">
+                  PRO
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">{user.title}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <CodingLevel level={user.skills.frontend} title="Frontend" />
+              <CodingLevel level={user.skills.backend} title="Backend" />
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div className="mt-4">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-600">Current Quest Progress</span>
-        <span className="text-sm text-blue-600">{user.currentQuest.progress}%</span>
+      <div className="mt-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-600">Current Quest Progress</span>
+          <span className="text-sm text-blue-600">{user.currentQuest.progress}%</span>
+        </div>
+        <ProgressBar 
+          value={user.currentQuest.progress} 
+          max={100} 
+          color="bg-gradient-to-r from-blue-500 to-purple-500" 
+        />
       </div>
-      <ProgressBar 
-        value={user.currentQuest.progress} 
-        max={100} 
-        color="bg-gradient-to-r from-blue-500 to-purple-500" 
-      />
-    </div>
 
-    <div className="mt-4 flex justify-between items-center">
-      <div className="flex gap-2">
-
-
-
-      </div>
-      <div className="flex gap-2">
-        <button className="px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-          View Profile
-        </button>
-        <button className="px-3 py-1 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors">
-          Manage
-        </button>
+      <div className="mt-4 flex justify-between items-center">
+        <div className="flex gap-2"></div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleClick}
+            className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            View Profile
+          </button>
+          <button className="px-3 py-1 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors">
+            Manage
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -125,6 +132,7 @@ const Users = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUsers = async () => {

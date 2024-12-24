@@ -21,6 +21,13 @@ import UpgradePage from './pages/UpgradePage';
 import SubscriptionSuccess from './components/SubscriptionSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import UserProfile from './pages/admin/UserProfile';
+import QuestPlay from './pages/QuestPlay';
+import CreateQuizRoom from './pages/CreateQuizRoom';
+import JoinQuizRoom from './pages/JoinQuizRoom';
+import Room from './pages/Room/Room.jsx';
+import Games from './pages/Games.jsx';
+import Ranking from './pages/Ranking.jsx';
 
 function App() {
   return (
@@ -32,7 +39,13 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-
+        <Route path='/game/:roomCode' element={<QuestPlay />} />
+        <Route path="/create-room" element={<CreateQuizRoom/>} />
+        <Route path='/join-room' element={<JoinQuizRoom />} />
+        <Route path='/room/:roomCode' element={<Room />} />
+        <Route path='/games'element={<Games />} />
+        
+ 
         {/* User-Only Routes */}
         <Route
           path="/dashboard"
@@ -42,6 +55,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path='/ranking/:roomCode'element={<Ranking />} />
 
         <Route
           path="/upgrade"
@@ -51,6 +65,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path='/admin/users/:id' element={<UserProfile />} />
 
         <Route
           path="/dashboard/courses"

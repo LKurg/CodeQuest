@@ -23,12 +23,12 @@ const MainLayout = ({ children }) => {
 
          
             <div className="hidden lg:flex lg:items-center lg:space-x-4">
-                 {/* Navigation Menu 
+                
              
-              <a href="/challenges" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-                Challenges
+              <a href="/join-room" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+             Join Challenge
               </a>
-            */}
+            
            
              
             </div>
@@ -39,6 +39,9 @@ const MainLayout = ({ children }) => {
                 <>
                   <a href="/dashboard" className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
                     Dashboard
+                  </a>
+                  <a href="/games" className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
+              My Games
                   </a>
                   <button
                     onClick={logout}
