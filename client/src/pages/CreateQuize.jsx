@@ -141,20 +141,30 @@ const CreateQuiz = () => {
   };
 
   const handleAddQuestion = () => {
-    const correctAnswerIndex = parseInt(newQuestion.correctAnswer); // Ensure it's an integer
+    let updatedQuestion;
     
-    const updatedChoices = newQuestion.choices.map((choice, index) => ({
-      text: choice,
-      isCorrect: index === correctAnswerIndex, // Set the correct choice based on index
-    }));
-  
-    // Construct the new question object
-    const updatedQuestion = {
-      questionText: newQuestion.questionText,
-      questionType: newQuestion.questionType,
-      choices: updatedChoices,
-      correctAnswer: correctAnswerIndex, // Store the index as a number
-    };
+    if (newQuestion.questionType === 'multipleChoice') {
+      const correctAnswerIndex = parseInt(newQuestion.correctAnswer);
+      const updatedChoices = newQuestion.choices.map((choice, index) => ({
+        text: choice,
+        isCorrect: index === correctAnswerIndex,
+      }));
+      
+      updatedQuestion = {
+        questionText: newQuestion.questionText,
+        questionType: newQuestion.questionType,
+        choices: updatedChoices,
+        correctAnswer: correctAnswerIndex,
+      };
+    } else {
+      // Handle coding questions
+      updatedQuestion = {
+        questionText: newQuestion.questionText,
+        questionType: newQuestion.questionType,
+        choices: [], // Empty array for coding questions
+        correctAnswer: newQuestion.correctAnswer, // Store the actual answer string
+      };
+    }
   
     // Add the question to the list of questions
     setQuestions([...questions, updatedQuestion]);
@@ -174,6 +184,7 @@ const CreateQuiz = () => {
 
   const handleSubmitQuiz = async () => {
     try {
+      console.log('questions',questions);
       await axios.post(
         'http://localhost:5000/api/quiz/create',
         { lessonId: selectedLesson, questions },
@@ -181,6 +192,7 @@ const CreateQuiz = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log('questions',questions);
 
       alert('Quiz created successfully!');
       // Reset everything after successful submission

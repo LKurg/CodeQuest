@@ -28,6 +28,7 @@ import JoinQuizRoom from './pages/JoinQuizRoom';
 import Room from './pages/Room/Room.jsx';
 import Games from './pages/Games.jsx';
 import Ranking from './pages/Ranking.jsx';
+import CodeEditor from './CodeEditor.jsx';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
         <Route path='/join-room' element={<JoinQuizRoom />} />
         <Route path='/room/:roomCode' element={<Room />} />
         <Route path='/games'element={<Games />} />
+        <Route path='/run' element={<CodeEditor/>} />
         
  
         {/* User-Only Routes */}

@@ -27,14 +27,54 @@ const ProgressSchema = new mongoose.Schema({
     clicks: { type: Number, default: 0 },
 });
 
-// Quiz results schema
 const QuizResultSchema = new mongoose.Schema({
-    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-    quizId: { type: String, required: true }, 
-    score: { type: Number, required: true }, 
-    xpEarned: { type: Number, default: 0 }, 
-    attemptedAt: { type: Date, default: Date.now },
+    courseId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Course', 
+        required: true 
+    },
+    quizId: { 
+        type: mongoose.Schema.Types.ObjectId, // Reference to the Quiz model
+        ref: 'Quiz', 
+        required: true 
+    },
+    score: { 
+        type: Number, 
+        required: true 
+    },
+    xpEarned: { 
+        type: Number, 
+        default: 0 
+    },
+    attemptedAt: { 
+        type: Date, 
+        default: Date.now 
+    },
+    incorrectAnswers: [{
+        questionId: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'Question',  // Assuming Question is another model or can be a reference to Quiz.questions
+            required: true
+        },
+        userAnswer: { 
+            type: String,  // Store the user's incorrect answer
+            required: true
+        },
+        correctAnswer: { 
+            type: String,  // Store the correct answer for comparison
+            required: true
+        },
+        explanation: { 
+            type: String,  // Optional explanation for the incorrect answer
+            required: false
+        },
+    }],
+    reattempts: { 
+        type: Number, 
+        default: 0  // Track number of reattempts for this quiz
+    },
 });
+
 
 // Enrolled course schema
 const EnrolledCourseSchema = new mongoose.Schema({
@@ -53,18 +93,29 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     resetPasswordToken: { type: String }, // Token for password reset
     resetPasswordExpire: { type: Date }, // Expiration time for reset token
-    enrolledCourses: [EnrolledCourseSchema],
-    progress: [ProgressSchema],
-    quizResults: [QuizResultSchema],
-    streak: StreakSchema,
-    xp: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now },
-    role: { 
-        type: String, 
-        enum: ['user', 'admin', 'superAdmin'], 
-        default: 'user' 
+    enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+    progress: [{
+        courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+        currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' },
+        completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
+    }],
+    quizResults: [QuizResultSchema], // Embed quiz results directly into the user schema
+    streak: {
+        days: { type: Number, default: 0 },
+        lastActivity: { type: Date, default: Date.now },
     },
-    subscription: SubscriptionSchema, 
+    xp: { type: Number, default: 0 }, // User's XP
+    createdAt: { type: Date, default: Date.now },
+    role: {
+        type: String,
+        enum: ['user', 'admin', 'superAdmin'],
+        default: 'user'
+    },
+    subscription: {
+        type: String,
+        enum: ['free', 'premium'],
+        default: 'free',
+    },
 });
 
 const User = mongoose.model('User', UserSchema);
