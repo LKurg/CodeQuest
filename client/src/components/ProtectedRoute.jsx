@@ -3,16 +3,20 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, role } = useAuth();
 
-  console.log('Role:', role);
-  console.log('Required Role:', requiredRole);
+  const {isAuthenticated,authState,role} = useAuth();
+ 
 
+
+  // Ensure user is defined before accessing its properties
   if (!isAuthenticated) {
     return <Navigate to="/" />;
   }
 
-  const normalizedRole = role.trim().toLowerCase();
+  console.log('Role:', role);
+
+
+  const normalizedRole = role?.trim().toLowerCase();
 
   // If user is admin and trying to access user routes, redirect to admin dashboard
   if (normalizedRole === 'admin' && !requiredRole) {

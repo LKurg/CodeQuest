@@ -6,9 +6,11 @@ import {
   faChartLine, 
   faPlay, 
   faCog, 
-  faStar 
+  faStar,
+  faBookOpen
 } from '@fortawesome/free-solid-svg-icons';
 import { Link, useLocation } from 'react-router-dom';
+import { faJava, faPython, faReact, faJs, faPhp } from '@fortawesome/free-brands-svg-icons';
 
 const DashboardSidebar = ({ children }) => {
   const location = useLocation();
@@ -22,25 +24,29 @@ const DashboardSidebar = ({ children }) => {
   // Memoized function to get language icon
   const getLanguageIcon = useCallback((language) => {
     const languageIcons = {
-      'Python': '🐍',
-      'JavaScript': '🟨',
-      'React': '⚛️',
-      'PHP': '🐘',
-      'Java': '☕',
-      'default': '📚'
+      'Python': faPython,
+      'JavaScript': faJs,
+      'React': faReact,
+      'PHP': faPhp,
+      'Java': faJava,
+      'default': faBookOpen
     };
     return languageIcons[language] || languageIcons['default'];
   }, []);
 
   // Memoized function to calculate course progress
   const calculateCourseProgress = useCallback((progress) => {
-    return Math.round(progress.progressPercentage || 0);
+    return Math.round(progress?.progressPercentage || 0);
   }, []);
 
-  // Centralized API call handler
+  // Centralized API call handler with proper error handling
   const fetchWithErrorHandling = async (url, options = {}) => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -52,7 +58,7 @@ const DashboardSidebar = ({ children }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Something went wrong');
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       return await response.json();
@@ -70,8 +76,8 @@ const DashboardSidebar = ({ children }) => {
       try {
         const statsData = await fetchWithErrorHandling('http://localhost:5000/api/users/stats');
         if (statsData) {
-          setStreak(statsData.streak);
-          setXp(statsData.xp);
+          setStreak(statsData.streak || 0);
+          setXp(statsData.xp || 0);
         }
       } finally {
         setIsLoading(false);
@@ -81,7 +87,7 @@ const DashboardSidebar = ({ children }) => {
     fetchStats();
   }, []);
 
-  // Fetch user progress
+  // Fetch user progress with proper dependency handling
   useEffect(() => {
     const fetchUserData = async () => {
       setIsLoading(true);
@@ -90,6 +96,7 @@ const DashboardSidebar = ({ children }) => {
         
         if (progressData) {
           setUserProgress(progressData);
+          console.log('this is the progress data:',progressData);
 
           // Transform progress data into active courses
           const enrichedCourses = progressData
@@ -97,9 +104,10 @@ const DashboardSidebar = ({ children }) => {
               id: progress.courseId,
               title: progress.courseTitle || 'Unnamed Course',
               progress: calculateCourseProgress(progress),
-              icon: getLanguageIcon(progress.courseTitle), 
+              language: progress.courseTitle,
               currentSection: progress.currentSection || 'Not Started',
               nextLesson: progress.nextLesson?.title || 'Course Completed',
+              nextLessonId: progress.nextLesson?._id, 
               lastAccessed: progress.lastAccessed 
                 ? new Date(progress.lastAccessed) 
                 : new Date(0)
@@ -115,7 +123,7 @@ const DashboardSidebar = ({ children }) => {
     };
 
     fetchUserData();
-  }, [calculateCourseProgress, getLanguageIcon]);
+  }, [calculateCourseProgress]);
 
   // Sidebar navigation items
   const sidebarItems = [
@@ -136,7 +144,6 @@ const DashboardSidebar = ({ children }) => {
     }
   ];
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -145,17 +152,16 @@ const DashboardSidebar = ({ children }) => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="text-red-600 p-4 text-center">
-        {error}
+        <p className="mb-4">{error}</p>
         <button 
           onClick={() => {
             setError(null);
             window.location.reload();
           }} 
-          className="ml-4 bg-teal-500 text-white px-4 py-2 rounded"
+          className="ml-4 bg-teal-500 text-white px-4 py-2 rounded hover:bg-teal-600 transition-colors"
         >
           Retry
         </button>
@@ -165,9 +171,7 @@ const DashboardSidebar = ({ children }) => {
 
   return (
     <div className="flex">
-      {/* Sidebar */}
       <div className="w-72 sticky top-0 bg-white border-r h-screen overflow-y-auto">
-        {/* Active Courses Section */}
         <div className="p-4 border-b">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <FontAwesomeIcon icon={faBook} className="mr-2 text-teal-600" /> 
@@ -184,7 +188,10 @@ const DashboardSidebar = ({ children }) => {
                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg mb-2"
               >
                 <div className="flex items-center">
-                  <span className="text-2xl mr-3">{course.icon}</span>
+                  <FontAwesomeIcon 
+                    icon={getLanguageIcon(course.language)} 
+                    className="text-2xl mr-3"
+                  />
                   <div>
                     <h4 className="font-medium text-sm">{course.title}</h4>
                     <p className="text-xs text-gray-500">
@@ -203,8 +210,8 @@ const DashboardSidebar = ({ children }) => {
                     ></div>
                   </div>
                   <Link 
-                    to={`/course/learn/${course.id}`} 
-                    className="text-teal-600 hover:bg-teal-50 p-1 rounded"
+                    to={`/course/learn/${course.id}/${course.nextLessonId}`} 
+                    className="text-teal-600 hover:bg-teal-50 p-1 rounded transition-colors"
                   >
                     <FontAwesomeIcon icon={faPlay} className="w-4 h-4" />
                   </Link>
@@ -214,7 +221,6 @@ const DashboardSidebar = ({ children }) => {
           )}
         </div>
 
-        {/* Navigation Items */}
         <div className="p-4">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Dashboard</h3>
           {sidebarItems.map(item => (
@@ -222,7 +228,7 @@ const DashboardSidebar = ({ children }) => {
               key={item.path}
               to={item.path}
               className={`
-                flex items-center p-3 rounded-lg mb-2 
+                flex items-center p-3 rounded-lg mb-2 transition-colors
                 ${location.pathname === item.path 
                   ? 'bg-teal-50 text-teal-700' 
                   : 'hover:bg-gray-50 text-gray-700'}
@@ -234,7 +240,6 @@ const DashboardSidebar = ({ children }) => {
           ))}
         </div>
 
-        {/* XP and Streak */}
         <div className="p-4 border-t">
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center">
@@ -253,7 +258,6 @@ const DashboardSidebar = ({ children }) => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-8">
         {children}
       </div>

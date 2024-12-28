@@ -59,7 +59,7 @@ const UpgradePage = () => {
 
         // Include the Authorization header with the Bearer token
         const response = await axios.get(
-          `http://localhost:5000/api/paymentStatus/${checkoutRequestId}`,
+          `http://localhost:5000/api/mpesa/paymentStatus/${checkoutRequestId}`,
           {
             headers: {
               Authorization: `Bearer ${token}` // Pass the token in the Authorization header
@@ -137,7 +137,7 @@ const UpgradePage = () => {
     setPaymentStatus('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/stkPush', {
+      const response = await axios.post('http://localhost:5000/api/mpesa/stkPush', {
         phoneNumber: sanitizedPhoneNumber,
         amount: 200,
       });

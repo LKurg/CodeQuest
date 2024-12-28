@@ -72,8 +72,7 @@ const Login = () => {
         // Use the full user object from the server response
         const userData = response.data.user; // This should now include the role
 
-        console.log('Login Response User Data:', userData);
-        console.log('User Role:', userData.role);
+
 
         // Call the login function with the full user data and token
         login(userData, response.data.token);

@@ -25,6 +25,7 @@ const AuthProvider = ({ children }) => {
       const isValid = validateToken(storedToken);
       if (isValid) {
         const user = JSON.parse(storedUser);
+     
         setAuthState({
           token: storedToken,
           user: {
@@ -32,7 +33,10 @@ const AuthProvider = ({ children }) => {
             subscription: user.subscription?.toLowerCase() || 'free' // Normalize subscription status
           },
           role: user.role,
+          
         });
+        console.log('this is the user:',user);
+        
       } else {
         logout();
       }
@@ -51,6 +55,7 @@ const AuthProvider = ({ children }) => {
       user: normalizedUserData,
       token: token,
       role: userData.role,
+    
     };
 
   
@@ -59,6 +64,7 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(normalizedUserData));
     localStorage.setItem('token', token);
     localStorage.setItem('userRole', userData.role);
+
   };
 
   const logout = () => {

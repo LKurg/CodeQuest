@@ -8,15 +8,18 @@ import {
   CheckCircle2, 
   AlertTriangle 
 } from 'lucide-react';
-import {useAuth} from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
+
 const Signup = () => {
+
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const { login } = useAuth();
+
 
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
@@ -74,57 +77,74 @@ const Signup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [successMessage, setSuccessMessage] = useState('');
+
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitError('');  // Reset the general error message
-  
-    // Validate form
+    setSubmitError('');
+    setSuccessMessage('');
+
     if (!validateForm()) {
       return;
     }
-  
+
     setIsSubmitting(true);
-  
+
     try {
-      // Prepare data for backend (exclude confirmPassword)
       const { confirmPassword, ...submitData } = formData;
-  
+      
       const response = await axios.post('http://localhost:5000/api/users/register', submitData);
-  
-      // Handle successful registration
-      if (response.data) {
-        // Assuming response.data contains user info and token
+      
+      // Check if response exists and has data
+      if (response && response.data) {
         const { user, token } = response.data;
-  
-   
+        
+        // Set success message
+        setSuccessMessage('Account created successfully!');
+
+        // Store user data and token
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', token);
-  
-       
-        login(user, token);  // Update context with the logged-in user and token
-  
-        // Redirect to dashboard
-        navigate('/dashboard');
+
+        // Update auth context
+        login(user, token);
+
+        // Short delay before redirect to show success message
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
       }
     } catch (error) {
-      // Handle registration errors
+      console.error('Registration error:', error); // For debugging
+      
       if (error.response) {
-        const errorMessage = error.response.data.message || '';
-        if (errorMessage.includes('E11000 duplicate key error collection')) {
-          setSubmitError('Username already exists. Please choose a different username.');
+        // Server responded with an error
+        const errorMessage = error.response.data.message;
+        if (errorMessage?.includes('E11000 duplicate key error')) {
+          if (errorMessage.includes('email')) {
+            setSubmitError('This email is already registered.');
+          } else if (errorMessage.includes('username')) {
+            setSubmitError('This username is already taken.');
+          } else {
+            setSubmitError('This account already exists.');
+          }
         } else {
-          setSubmitError(errorMessage || 'Registration failed');
+          setSubmitError(errorMessage || 'Registration failed. Please try again.');
         }
       } else if (error.request) {
-        setSubmitError('No response from server. Please check your connection.');
+        // Request made but no response received
+        setSubmitError('Unable to reach the server. Please check your connection.');
       } else {
-        setSubmitError('An unexpected error occurred');
+        // Something else went wrong
+        setSubmitError(`Registration failed: ${error.message}`);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
-  
 
   
 
@@ -141,10 +161,17 @@ const Signup = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {submitError && (
+        {submitError && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg flex items-center">
               <AlertTriangle className="mr-2 text-red-500" />
               {submitError}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center">
+              <CheckCircle2 className="mr-2 text-green-500" />
+              {successMessage}
             </div>
           )}
 

@@ -390,6 +390,10 @@ router.get('/active-courses', authMiddleware, async (req, res) => {
         .json({ message: "Error fetching active courses", error: error.message });
     }
   });
+
+router.post('/update-streak', authMiddleware,postStreak ) ;
+
+
   
   
   

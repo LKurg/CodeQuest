@@ -8,8 +8,78 @@ import {
   faTrophy, 
   faChartLine, 
   faCodeBranch,
-  faAward
+  faAward,
+  faFire,
+  faCalendarCheck
 } from '@fortawesome/free-solid-svg-icons';
+
+// Streak Card Component
+const StreakCard = ({ streakData }) => {
+  const getStreakColor = (days) => {
+    if (days >= 30) return 'text-red-500';
+    if (days >= 14) return 'text-orange-500';
+    return 'text-yellow-500';
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">Learning Streak</h2>
+        <FontAwesomeIcon 
+          icon={faFire} 
+          className={`text-2xl ${getStreakColor(streakData.currentStreak)}`} 
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-600">Current Streak</p>
+          <p className={`text-3xl font-bold ${getStreakColor(streakData.currentStreak)}`}>
+            {streakData.currentStreak} days
+          </p>
+        </div>
+        
+        <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-600">Longest Streak</p>
+          <p className="text-3xl font-bold text-indigo-500">
+            {streakData.longestStreak} days
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="text-sm text-gray-600 text-center">
+          Last active: {new Date(streakData.lastActivity).toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-sm text-gray-600 mb-2">Last 7 Days Activity:</p>
+        <div className="grid grid-cols-7 gap-1">
+          {[...Array(7)].map((_, index) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (6 - index));
+            const isActive = streakData.activeDates?.some(
+              activeDate => new Date(activeDate).toDateString() === date.toDateString()
+            );
+            
+            return (
+              <div
+                key={index}
+                className={`h-8 rounded-md flex items-center justify-center text-xs
+                  ${isActive 
+                    ? 'bg-teal-500 text-white' 
+                    : 'bg-gray-100 text-gray-400'}`}
+              >
+                {date.getDate()}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function Progress() {
   const [progressData, setProgressData] = useState({
@@ -17,7 +87,13 @@ function Progress() {
     overallProgress: 0,
     totalCoursesCompleted: 0,
     totalXP: 0,
-    achievements: []
+    achievements: [],
+    streak: {
+      currentStreak: 0,
+      longestStreak: 0,
+      lastActivity: new Date(),
+      activeDates: []
+    }
   });
 
   const [chartData, setChartData] = useState({
@@ -121,6 +197,9 @@ function Progress() {
             <h1 className="text-3xl font-bold text-gray-800">Learning Progress</h1>
           </div>
 
+      
+     
+
           {/* Overall Progress Summary */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
@@ -161,9 +240,11 @@ function Progress() {
             </div>
           </div>
 
+          <div className="mb-8">
+            <StreakCard streakData={progressData.streak} />
+          </div>
           {/* Detailed Progress Charts */}
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {/* Course Progress Chart */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4 text-gray-800">
                 Course Progress
@@ -176,7 +257,6 @@ function Progress() {
               />
             </div>
 
-            {/* Skill Progress Chart */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4 text-gray-800">
                 Skill Proficiency

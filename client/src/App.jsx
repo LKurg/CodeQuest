@@ -106,8 +106,9 @@ function App() {
         />
 
         {/* Shared Routes - Accessible to both users and admins */}
+        {/* */}
         <Route
-          path="/course/learn/:courseId"
+       path="/course/learn/:courseId/:lessonId?"
           element={
             <ProtectedRoute>
               <CourseTutorial />

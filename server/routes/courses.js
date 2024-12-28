@@ -3,6 +3,7 @@ const router = express.Router();
 const Course = require("../models/Course");
 const { User } = require('../models/User');
 const authMiddleware = require('../middleware/auth'); // Import the auth middleware
+const { updateStreak } = require('../utils/streakUtils');
 
 
 const multer = require('multer');
@@ -134,20 +135,30 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // Get a specific course by ID (protected route)
 router.get("/:courseId", authMiddleware, async (req, res, next) => {
-   try {
-     const course = await Course.findById(req.params.courseId);
-     const userId = req.user.id;
-     const user = await User.findById(userId);
-     console.log('this is the subscription:', user.subscription.type);
-    
-     
-     if (!course) {
-       return res.status(404).json({ message: "Course not found." });
-     }
-     res.status(200).json({course,subscription:user.subscription.type});
-   } catch (error) {
-     next(error);
-   }
+  console.log('req.params.courseId:', req.params.courseId);
+  try {
+    const course = await Course.findById(req.params.courseId);
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found." });
+    }
+
+    // Update streak when user accesses the course
+    const streak = await updateStreak(userId);
+
+    console.log('This is the subscription:', user.subscription.type);
+    console.log('Updated streak:', streak);
+
+    res.status(200).json({
+      course,
+      subscription: user.subscription.type,
+      streak,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Update a course by ID (protected route)

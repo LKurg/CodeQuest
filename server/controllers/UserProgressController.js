@@ -1,5 +1,6 @@
 
 const { User } = require('../models/User');
+const { updateStreak } = require('../utils/streakUtils');
 
 
 
@@ -98,35 +99,17 @@ const getUserProgress = async (req, res) => {
     }
 };
 
-const postStreak=async(req,res,next)=>{
-    const{userId}=req.body;
+const postStreak=async(req,res,next)=> { 
+    const  userId  = req.user.id;
 
-    try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        const today = new Date().toISOString().split('T')[0];
-        const lastActivity = new Date(user.streak.lastActivity).toISOString().split('T')[0];
-
-        if (today === lastActivity) {
-            // Activity already logged today
-            res.status(200).json({ message: 'Streak already updated today', streak: user.streak });
-        } else if (new Date(today) - new Date(lastActivity) === 86400000) {
-            // Increment streak if consecutive day
-            user.streak.days += 1;
-        } else {
-            // Reset streak if not consecutive
-            user.streak.days = 1;
-        }
-
-        user.streak.lastActivity = new Date();
-        await user.save();
-        res.status(200).json({ message: 'Streak updated successfully', streak: user.streak });
-    } catch (error) {
-        next(error);
-    }
-
+try {
+    const streak = await updateStreak(userId);
+    res.status(200).json({ success: true, streak });
+} catch (err) {
+    res.status(500).json({ success: false, error: err.message });
 }
+}
+
 const getStreak=async(req,res,next)=>{
     const { userId } = req.params;
     try {
@@ -146,6 +129,13 @@ const GetDetailedProgress = async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+        const streakInfo = {
+            currentStreak: user.streak?.days || 0,
+            lastActivity: user.streak?.lastActivity,
+            activeDates: user.streak?.activeDates || [],
+            // Calculate longest streak from activeDates
+            longestStreak: calculateLongestStreak(user.streak?.activeDates || [])
+        };
 
         // Fetch all enrolled courses with progress
         console.log('User hahah:', user);
@@ -192,8 +182,10 @@ const GetDetailedProgress = async (req, res) => {
             totalCoursesCompleted: enrolledCourses.filter(course => course.progressPercentage === 100).length,
             totalXP: user.xp || 0,
             skillProgress,
-            achievements
+            achievements,
+            streak: streakInfo
         };
+
 
         res.status(200).json(response);
     } catch (error) {
@@ -201,7 +193,31 @@ const GetDetailedProgress = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 
+
 }
+const calculateLongestStreak = (activeDates) => {
+    if (!activeDates.length) return 0;
+    
+    const sortedDates = activeDates
+        .map(date => new Date(date))
+        .sort((a, b) => a - b);
+    
+    let currentStreak = 1;
+    let maxStreak = 1;
+    
+    for (let i = 1; i < sortedDates.length; i++) {
+        const diff = Math.abs(sortedDates[i] - sortedDates[i-1]);
+        if (diff <= 24 * 60 * 60 * 1000) { // Within 24 hours
+            currentStreak++;
+            maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+            currentStreak = 1;
+        }
+    }
+    
+    return maxStreak;
+};
+
 async function generateAchievements(user, enrolledCourses) {
     const achievements = [];
 
@@ -262,5 +278,22 @@ async function calculateSkillProgress(user, enrolledCourses) {
 
     return skillProgress;
 }
+const isSameDay = (date1, date2) => {
+    return (
+        date1.getFullYear() === date2.getFullYear() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getDate() === date2.getDate()
+    );
+};
 
-module.exports = { getUserProgress,postStreak ,getStreak,GetDetailedProgress};
+// Utility to check if two dates are consecutive
+const isConsecutiveDay = (date1, date2) => {
+    const oneDay = 24 * 60 * 60 * 1000; // Milliseconds in a day
+    return date1.getTime() + oneDay === date2.getTime();
+};
+
+
+
+
+
+module.exports = { getUserProgress,postStreak ,getStreak,GetDetailedProgress,};

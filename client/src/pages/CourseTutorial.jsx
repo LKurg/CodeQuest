@@ -1,36 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { PremiumBanner } from '../components/PremiumBanner';
-import { faPhp } from '@fortawesome/free-brands-svg-icons';
+import { faCode, faBookOpen, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import useCourseAnalytics from '../hooks/useCourseAnalytics';
-import { 
-  faCheckCircle, 
-  faStar, 
-  faLock, 
-  faCode, 
-  faBookOpen, 
-  faArrowRight
-} from '@fortawesome/free-solid-svg-icons';
-import MainLayout from '../Layout/MainLayout';
 import ContentRenderer from '../components/ContentRenderer';
-import ProgressTracker from '../components/ProgressTracker';
 import CodeChallenge from '../components/CodeChallenge';
 import TakeQuiz from '../components/Quiz';
+import CourseLayout from '../Layout/CourseLayout';
 
 function CourseTutorial() {
-  const { courseId } = useParams();
+  const { courseId, lessonId } = useParams();
+  const navigate = useNavigate();
+  
+  // State management
   const [courseData, setCourseData] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
-  const [activeLesson, setActiveLesson] = useState(null);
+  const [activeLesson, setActiveLesson] = useState(lessonId || null);
   const [completedLessons, setCompletedLessons] = useState([]);
   const [xp, setXp] = useState(0);
   const [error, setError] = useState(null);
   const [isQuizMode, setIsQuizMode] = useState(false);
   const [userProgress, setUserProgress] = useState(null);
-  const navigate = useNavigate();
+  const [userSubscription, setUserSubscription] = useState(null);
+
+  // Analytics hook
   useCourseAnalytics(courseId, activeLesson, completedLessons, userProgress);
 
+  // Initial data fetch
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
@@ -38,36 +34,46 @@ function CourseTutorial() {
       try {
         const [progressResponse, courseResponse] = await Promise.all([
           fetch(`http://localhost:5000/api/users/progress/${courseId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
           }),
           fetch(`http://localhost:5000/api/courses/${courseId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
           })
         ]);
-
+  
         const progressData = await progressResponse.json();
         const courseData = await courseResponse.json();
-
-        setCourseData(courseData);
+  
+        // Update states with fetched data
+        setUserSubscription(courseData.subscription);
+        setCourseData(courseData.course);
         setUserProgress(progressData);
-        
         setCompletedLessons(progressData.completedLessons || []);
-        
-        const defaultSection = courseData.sections[0]?._id;
-        const progressSection = progressData?.currentSection || defaultSection;
-        setActiveSection(progressSection);
-
-        const activeSectionLessons = courseData.sections
-          .find(section => section._id === progressSection)?.lessons;
-        
-        if (activeSectionLessons?.length) {
-          setActiveLesson(activeSectionLessons[0]._id);
+  
+        // Handle lesson and section selection based on URL or default
+        if (lessonId) {
+          const sectionWithLesson = courseData.course.sections.find(
+            section => section.lessons.some(lesson => lesson._id === lessonId)
+          );
+          if (sectionWithLesson) {
+            setActiveSection(sectionWithLesson._id);
+            setActiveLesson(lessonId);
+          }
+        } else {
+          // Set default section and lesson if no lessonId in URL
+          const defaultSection = courseData.course.sections[0]?._id;
+          const progressSection = progressData?.currentSection || defaultSection;
+          setActiveSection(progressSection);
+          
+          const firstLesson = courseData.course.sections
+            .find(section => section._id === progressSection)?.lessons[0];
+          
+          if (firstLesson) {
+            setActiveLesson(firstLesson._id);
+            navigate(`/course/learn/${courseId}/${firstLesson._id}`);
+          }
         }
-
+  
       } catch (error) {
         console.error('Error fetching data:', error);
         setError('Failed to load course content');
@@ -75,12 +81,20 @@ function CourseTutorial() {
     };
     
     fetchData();
-  }, [courseId]);
+  }, [courseId, lessonId, navigate]);
 
+  // Quiz handlers
   const handleTakeQuiz = () => {
-    navigate(`/course/quize/${courseId}/${activeLesson}`);
+    navigate(`/course/quiz/${courseId}/${activeLesson}`);
   };
 
+  const handleQuizComplete = (score) => {
+    setXp(prevXp => prevXp + score);
+    setIsQuizMode(false);
+    progressToNextSection();
+  };
+
+  // Lesson completion handlers
   const handleLessonSuccess = () => {
     setXp(prevXp => prevXp + 100);
     if (activeLesson && !completedLessons.includes(activeLesson)) {
@@ -88,21 +102,29 @@ function CourseTutorial() {
     }
   };
 
+  // Navigation handlers
   const progressToNextSection = () => {
     if (!courseData?.sections) return;
 
     const currentSectionIndex = courseData.sections.findIndex(s => s._id === activeSection);
-    const currentLessonIndex = courseData.sections[currentSectionIndex].lessons
-      .findIndex(l => l._id === activeLesson);
+    const currentSection = courseData.sections[currentSectionIndex];
+    const currentLessonIndex = currentSection.lessons.findIndex(l => l._id === activeLesson);
 
-    if (currentLessonIndex < courseData.sections[currentSectionIndex].lessons.length - 1) {
-      setActiveLesson(courseData.sections[currentSectionIndex].lessons[currentLessonIndex + 1]._id);
-    } else if (currentSectionIndex < courseData.sections.length - 1) {
+    // Try to move to next lesson in current section
+    if (currentLessonIndex < currentSection.lessons.length - 1) {
+      const nextLesson = currentSection.lessons[currentLessonIndex + 1];
+      setActiveLesson(nextLesson._id);
+      navigate(`/course/${courseId}/${nextLesson._id}`);
+    }
+    // If no more lessons in current section, try to move to next section
+    else if (currentSectionIndex < courseData.sections.length - 1) {
       const nextSection = courseData.sections[currentSectionIndex + 1];
       setActiveSection(nextSection._id);
       
       if (nextSection.lessons?.length > 0) {
-        setActiveLesson(nextSection.lessons[0]._id);
+        const firstLesson = nextSection.lessons[0];
+        setActiveLesson(firstLesson._id);
+        navigate(`/course/${courseId}/${firstLesson._id}`);
       }
     }
   };
@@ -121,6 +143,7 @@ function CourseTutorial() {
           ? [activeSection.toString()] 
           : [];
 
+      // Update progress on server
       await fetch('http://localhost:5000/api/users/progress', {
         method: 'POST',
         headers: {
@@ -141,12 +164,7 @@ function CourseTutorial() {
     progressToNextSection();
   };
 
-  const handleQuizComplete = (score) => {
-    setXp(prevXp => prevXp + score);
-    setIsQuizMode(false);
-    progressToNextSection();
-  };
-
+  // Content rendering helpers
   const getActiveLessonDetails = () => {
     if (!courseData?.sections) return null;
     
@@ -198,17 +216,7 @@ function CourseTutorial() {
     );
   };
 
-  if (!courseData) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-teal-500"></div>
-          <p className="mt-4 text-gray-600">Loading course content...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Error handling
   if (error) {
     return (
       <div className="flex justify-center items-center h-screen text-red-600">
@@ -217,123 +225,44 @@ function CourseTutorial() {
     );
   }
 
-  if (!courseData.sections || courseData.sections.length === 0) {
-    return <div className="text-center py-10 text-xl">No course content available</div>;
-  }
-
-  const totalLessons = courseData.sections.flatMap(s => s.lessons).length;
-
+  // Main render
   return (
-    <MainLayout>
-          <div className="relative z-20"> {/* Added z-20 for premium banner container */}
-            <PremiumBanner userSubscription={userProgress?.subscription} />
-          </div>
-      <div className="flex min-h-screen bg-gray-50 relative"> {/* Added relative positioning */}
-        <div className="w-64 bg-white border-r p-6 overflow-y-auto sticky top-0 h-screen z-10"> {/* Added z-10 */}
-          <div className="flex flex-col mb-8">
-            <div className="flex items-center mb-4">
-              <FontAwesomeIcon 
-                icon={faPhp} 
-                className="text-3xl mr-4 text-teal-600" 
-              />
-              <h1 className="text-xl font-bold text-gray-800">
-                {courseData.title}
-              </h1>
+    <CourseLayout
+      courseData={courseData}
+      activeSection={activeSection}
+      setActiveSection={setActiveSection}
+      activeLesson={activeLesson}
+      setActiveLesson={setActiveLesson}
+      completedLessons={completedLessons}
+      xp={xp}
+      userProgress={userProgress}
+      userSubscription={userSubscription}
+    >
+      {isQuizMode ? (
+        <TakeQuiz 
+          activeLesson={activeLesson.toString()} 
+          onQuizComplete={handleQuizComplete} 
+        />
+      ) : (
+        <>
+          {activeLesson ? renderLessonContent() : (
+            <div className="text-center text-gray-500 flex items-center justify-center h-full">
+              <p className="text-xl">Please select a lesson to begin!</p>
             </div>
-
-            <ProgressTracker 
-              xp={xp} 
-              completedLessons={completedLessons}
-              totalLessons={totalLessons}
-              userProgress={userProgress} 
-            />
-          </div>
-
-          {courseData.sections.map((section) => (
-            <div key={section._id} className="mb-6">
-              <div 
-                onClick={() => setActiveSection(section._id)}
-                className={`cursor-pointer p-3 rounded-lg transition duration-300 ${
-                  activeSection === section._id 
-                    ? 'bg-teal-100 text-teal-800' 
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                <h3 className="font-semibold">{section.title}</h3>
-              </div>
-
-              {activeSection === section._id && (
-                <div className="mt-2 space-y-2">
-                  {section.lessons.map((lesson, index) => {
-                    const isUnlocked = 
-                      index === 0 || 
-                      completedLessons.includes(section.lessons[index - 1]._id);
-
-                    return (
-                      <div 
-                        key={lesson._id} 
-                        onClick={() => isUnlocked && setActiveLesson(lesson._id)}
-                        className={`flex items-center p-2 rounded-lg transition duration-300 ${
-                          !isUnlocked 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : 'cursor-pointer hover:bg-gray-100'
-                        } ${
-                          activeLesson === lesson._id 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : ''
-                        }`}
-                      >
-                        <FontAwesomeIcon 
-                          icon={
-                            completedLessons.includes(lesson._id) 
-                              ? faCheckCircle 
-                              : (isUnlocked ? faStar : faLock)
-                          }
-                          className={`mr-2 transition duration-300 ${
-                            completedLessons.includes(lesson._id) 
-                              ? 'text-green-500' 
-                              : (isUnlocked ? 'text-yellow-500' : 'text-gray-400')
-                          }`}
-                        />
-                        <span>{lesson.title}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-      
-        </div>
-        
-        <div className="flex-1 p-6 bg-white overflow-auto relative z-0"> {/* Added z-0 */}
-          {isQuizMode ? (
-            <TakeQuiz 
-              activeLesson={activeLesson.toString()} 
-              onQuizComplete={handleQuizComplete} 
-            />
-          ) : (
-            <>
-              {activeLesson ? renderLessonContent() : (
-                <div className="text-center text-gray-500 flex items-center justify-center h-full">
-                  <p className="text-xl">Please select a lesson to begin!</p>
-                </div>
-              )}
-
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                <button 
-                  onClick={handleTakeQuiz}
-                  className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
-                >
-                  <FontAwesomeIcon icon={faCode} className="mr-2" />
-                  Take Quiz
-                </button>
-              </div>
-            </>
           )}
-        </div>
-      </div>
-    </MainLayout>
+
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+            <button 
+              onClick={handleTakeQuiz}
+              className="bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-teal-700 transition duration-300 flex items-center"
+            >
+              <FontAwesomeIcon icon={faCode} className="mr-2" />
+              Take Quiz
+            </button>
+          </div>
+        </>
+      )}
+    </CourseLayout>
   );
 }
 
