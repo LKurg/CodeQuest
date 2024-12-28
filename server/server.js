@@ -7,6 +7,7 @@ const connectDB = require('./connection');
 const Player = require('./models/Player');
 const playerRoutes = require('./routes/player');
 const GameQuiz = require('./models/GameQuiz');
+const mpesaRoutes = require('./routes/lipanampesa');
 const app = express();
 
 const server = http.createServer(app);
@@ -300,6 +301,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.use('/api/player', playerRoutes);
+app.use('/api/mpesa', mpesaRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

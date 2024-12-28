@@ -22,8 +22,7 @@ const Login = async (req, res) => {
 
         // Determine subscription status
         const subscriptionStatus = user.subscription?.type === 'premium' ? 'Premium User' : 'Free User';
-        console.log(`User with email ${email} has logged in as a ${subscriptionStatus}`);
-
+    
         // Generate JWT
         const token = jwt.sign(
             {
@@ -49,7 +48,7 @@ const Login = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error('Error logging in:', error);
+
         return res.status(500).json({ error: 'Internal server error' });
     }
 };

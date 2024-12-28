@@ -148,6 +148,7 @@ const GetDetailedProgress = async (req, res) => {
         }
 
         // Fetch all enrolled courses with progress
+        console.log('User hahah:', user);
         const enrolledCourses = await Promise.all(user.progress.map(async (progress) => {
             const course = await Course.findById(progress.courseId).populate({
                 path: 'sections',

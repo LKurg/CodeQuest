@@ -136,11 +136,15 @@ router.get('/', authMiddleware, async (req, res) => {
 router.get("/:courseId", authMiddleware, async (req, res, next) => {
    try {
      const course = await Course.findById(req.params.courseId);
+     const userId = req.user.id;
+     const user = await User.findById(userId);
+     console.log('this is the subscription:', user.subscription.type);
+    
      
      if (!course) {
        return res.status(404).json({ message: "Course not found." });
      }
-     res.status(200).json(course);
+     res.status(200).json({course,subscription:user.subscription.type});
    } catch (error) {
      next(error);
    }

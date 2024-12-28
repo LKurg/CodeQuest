@@ -280,7 +280,7 @@ console.log("user:", req.user);
 
             // Now update the user’s subscription to premium
             const user = await User.findById(req.user.id); // Use req.user._id for the authenticated user
-
+console.log("this is the user user:", user);
             if (user) {
                 // Update subscription to premium
                 user.subscription.type = 'premium';
