@@ -25,7 +25,7 @@ const CourseCard = ({ course, onEnroll, onContinueLearning }) => {
           <h3 className="text-xl font-bold tracking-wide">{course.title}</h3>
         </div>
         <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium tracking-wider uppercase">
-          {course.difficulty || 'Intermediate'}
+          {course.difficulty || ''}
         </span>
       </div>
 

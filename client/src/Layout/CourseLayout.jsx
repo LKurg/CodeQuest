@@ -1,15 +1,65 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPhp } from '@fortawesome/free-brands-svg-icons';
+import { 
+  faPhp, 
+  faPython, 
+  faJsSquare, 
+  faJava, 
+  faReact, 
+  faAngular, 
+  faVuejs, 
+  faNode,
+  faCss3,
+  faHtml5,
+  faSwift,
+  faRust,
+} from '@fortawesome/free-brands-svg-icons';
 import { 
   faCheckCircle, 
   faStar, 
-  faLock
+  faLock,
+  faCode,
 } from '@fortawesome/free-solid-svg-icons';
 import MainLayout from '../Layout/MainLayout';
 import ProgressTracker from '../components/ProgressTracker';
 import { PremiumBanner } from '../components/PremiumBanner';
+
+// Utility function to get programming language icon
+const getProgrammingLanguageIcon = (title = '') => {
+  if (!title) return faCode;
+  
+  const lowercaseTitle = title.toLowerCase();
+  
+  // Map of keywords to their corresponding icons
+  const iconMap = {
+    'php': faPhp,
+    'python': faPython,
+    'javascript': faJsSquare,
+    'js': faJsSquare,
+    'java': faJava,
+    'react': faReact,
+    'angular': faAngular,
+    'vue': faVuejs,
+    'node': faNode,
+    'nodejs': faNode,
+    'css': faCss3,
+    'html': faHtml5,
+    'swift': faSwift,
+    'rust': faRust,
+  };
+
+  // Check for each keyword in the title using word boundaries
+  for (const [keyword, icon] of Object.entries(iconMap)) {
+    // Using word boundary regex to match whole words only
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(lowercaseTitle)) {
+      return icon;
+    }
+  }
+
+  return faCode;
+};
 
 const CourseLayout = ({ 
   children,
@@ -44,6 +94,8 @@ const CourseLayout = ({
     );
   }
 
+  const courseIcon = getProgrammingLanguageIcon(courseData.title);
+
   return (
     <MainLayout>
       <div className="relative z-20">
@@ -54,7 +106,7 @@ const CourseLayout = ({
           <div className="flex flex-col mb-8">
             <div className="flex items-center mb-4">
               <FontAwesomeIcon 
-                icon={faPhp} 
+                icon={courseIcon}
                 className="text-3xl mr-4 text-teal-600" 
               />
               <h1 className="text-xl font-bold text-gray-800">
