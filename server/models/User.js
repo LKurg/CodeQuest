@@ -2,9 +2,11 @@ const mongoose = require('mongoose');
 
 // Streak Schema
 const StreakSchema = new mongoose.Schema({
-    days: { type: Number, default: 0 }, 
-    lastActivity: { type: Date, default: Date.now }, 
+    days: { type: Number, default: 0 }, // Current streak count
+    lastActivity: { type: Date, default: Date.now }, // Date of the last activity
+    activeDates: [{ type: Date }] // Array of dates when the user was active
 });
+
 
 const SubscriptionSchema = new mongoose.Schema({
     type: { 
@@ -65,7 +67,7 @@ const QuizResultSchema = new mongoose.Schema({
             required: true
         },
         explanation: { 
-            type: String,  // Optional explanation for the incorrect answer
+            type: String, 
             required: false
         },
     }],
@@ -94,16 +96,9 @@ const UserSchema = new mongoose.Schema({
     resetPasswordToken: { type: String }, // Token for password reset
     resetPasswordExpire: { type: Date }, // Expiration time for reset token
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
-    progress: [{
-        courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-        currentLesson: { type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' },
-        completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
-    }],
+    progress: [ProgressSchema], 
     quizResults: [QuizResultSchema], // Embed quiz results directly into the user schema
-    streak: {
-        days: { type: Number, default: 0 },
-        lastActivity: { type: Date, default: Date.now },
-    },
+    streak:  StreakSchema,
     xp: { type: Number, default: 0 }, // User's XP
     createdAt: { type: Date, default: Date.now },
     role: {
@@ -115,9 +110,9 @@ const UserSchema = new mongoose.Schema({
         type: String,
         enum: ['free', 'premium'],
         default: 'free',
-    },
+    },enrolledCourses: [EnrolledCourseSchema],
 });
 
-const User = mongoose.model('User', UserSchema);
+const User = mongoose.model('User', UserSchema,);
 
 module.exports = { User };

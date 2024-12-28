@@ -94,12 +94,14 @@ router.get('/', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Use findOne instead of findById if findById is not working
     const user = await User.findOne({ _id: userId });
+   
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    console.log('user:', user);
+    console.log('user enrolled course:', user.enrolledCourses);
 
     const enrolledCourseIds = user.enrolledCourses.map(ec => ec.courseId.toString());
 
@@ -124,6 +126,7 @@ router.get('/', authMiddleware, async (req, res) => {
     res.json(courses);
   } catch (error) {
     console.error('Error fetching courses:', error);
+   
     res.status(500).json({ message: 'Error fetching courses', error: error.message });
   }
 });
