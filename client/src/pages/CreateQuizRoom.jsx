@@ -130,7 +130,7 @@ const CreateQuizRoom = () => {
         throw new Error(data.message || 'Failed to create quiz room');
       }
 
-      navigate(`/join/room/${roomCode}`);
+      navigate(`/room/${roomCode}`);
     } catch (err) {
       setError(err.message || 'An error occurred while creating the quiz room');
     } finally {

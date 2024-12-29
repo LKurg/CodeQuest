@@ -4,6 +4,8 @@ const multiavatar = require('@multiavatar/multiavatar');
 const Player = require('../models/Player');
 const GameQuiz = require('../models/GameQuiz');
 const authMiddleware = require('../middleware/auth');
+const { createQuiz } = require('../controllers/AdminController');
+const { CreateQuizRoom } = require('../controllers/GameQuizeController');
 
 const router = express.Router();
 
@@ -105,5 +107,6 @@ router.get('/game-quiz/:roomCode', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+router.post('/create-quiz-game', authMiddleware, CreateQuizRoom); 
 
 module.exports = router;
