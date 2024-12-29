@@ -65,6 +65,7 @@ const getUserAnalytics = async (req, res) => {
   
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (!decoded || decoded.role !== 'admin') {
+     
         return res.status(403).json({ error: 'Forbidden: Insufficient permissions.' });
       }
   
