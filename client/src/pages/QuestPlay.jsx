@@ -8,6 +8,7 @@ import { useParams } from 'react-router-dom';
 import io from 'socket.io-client';
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim";
+import FormattedContent from '../components/FormatedContent';
 
 
 const QUESTION_TIME = 30;
@@ -151,7 +152,7 @@ const QuestPlay = () => {
     };
 
     const handleQuestionUpdate = (data) => {
-      console.log('Question update received:', data);
+      //console.log('Question update received:', data);
       
       // Clear existing timers
       clearInterval(timerRef.current);
@@ -403,12 +404,7 @@ const QuestPlay = () => {
             </div>
 
             <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 mb-8">
-              <div 
-                className="text-3xl font-bold mb-12 text-white"
-                dangerouslySetInnerHTML={{ 
-                  __html: DOMPurify.sanitize(quizData.questions[currentQuestion].content)
-                }}
-              />
+            <FormattedContent content={quizData.questions[currentQuestion].content} />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {quizData.questions[currentQuestion].options.map((option, index) => (
