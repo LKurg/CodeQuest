@@ -135,11 +135,14 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // Get a specific course by ID (protected route)
 router.get("/:courseId", authMiddleware, async (req, res, next) => {
+
   console.log('req.params.courseId:', req.params.courseId);
   try {
     const course = await Course.findById(req.params.courseId);
     const userId = req.user.id;
+    console.log('userId:', userId);
     const user = await User.findById(userId);
+    
 
     if (!course) {
       return res.status(404).json({ message: "Course not found." });

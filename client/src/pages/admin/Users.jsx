@@ -81,8 +81,7 @@ const UserCard = ({ user }) => {
             </div>
             <p className="text-sm text-gray-500">{user.title}</p>
             <div className="flex items-center gap-3 mt-2">
-              <CodingLevel level={user.skills.frontend} title="Frontend" />
-              <CodingLevel level={user.skills.backend} title="Backend" />
+
             </div>
           </div>
         </div>
@@ -158,6 +157,7 @@ const Users = () => {
         setUsers(data.users);
         setStats(data.dashboardStats);
         setTotalPages(data.pagination.pages);
+        console.log(data);
       } catch (err) {
         setError(err.message);
       } finally {

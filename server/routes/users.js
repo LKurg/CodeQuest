@@ -12,7 +12,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { logRecentActivity } = require('../services/activityService');
 const { Signup } = require('../controllers/SignupController');
-const { getUserProgress, postStreak, getStreak, GetDetailedProgress } = require('../controllers/UserProgressController');
+const { getUserProgress, postStreak, getStreak, GetDetailedProgress, getLeaderboardData } = require('../controllers/UserProgressController');
 const { getProfile } = require('../controllers/ProfileController');
 const { ResetPassword } = require('../controllers/PasswordResetController');
 
@@ -392,7 +392,7 @@ router.get('/active-courses', authMiddleware, async (req, res) => {
   });
 
 router.post('/update-streak', authMiddleware,postStreak ) ;
-
+router.get('/leaderboard',authMiddleware,getLeaderboardData);
 
   
   

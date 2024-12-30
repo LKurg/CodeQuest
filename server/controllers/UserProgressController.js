@@ -296,4 +296,134 @@ const isConsecutiveDay = (date1, date2) => {
 
 
 
-module.exports = { getUserProgress,postStreak ,getStreak,GetDetailedProgress,};
+
+
+
+
+
+const getLeaderboardData = async (req, res) => {
+    try {
+      const userId = req.user._id; 
+      
+      
+      // Get all users sorted by XP (descending) and limit to top 10
+      const leaderboardData = await User.aggregate([
+      
+        // Match only users with XP or streaks
+        {
+          $match: {
+            $or: [
+              { xp: { $exists: true, $gt: 0 } },
+              { 'streak.days': { $exists: true, $gt: 0 } }
+            ]
+          }
+        },
+        // Project only the fields we need
+        {
+          $project: {
+            username: 1,
+            xp: 1,
+            'streak.days': 1,
+            'streak.lastActivity': 1
+          }
+        },
+        
+        {
+          $sort: {
+            xp: -1,
+            'streak.days': -1
+          }
+        },
+        {
+          $limit: 10
+        }
+      ]);
+  console.log('Leaderboard Data:', leaderboardData);
+      // Find current user's rank
+      const userRankData = await User.aggregate([
+        {
+          $match: {
+            $or: [
+              { xp: { $exists: true, $gt: 0 } },
+              { 'streak.days': { $exists: true, $gt: 0 } }
+            ]
+          }
+        },
+        {
+          $project: {
+            username: 1,
+            xp: 1,
+            'streak.days': 1
+          }
+        },
+        {
+          $sort: {
+            xp: -1,
+            'streak.days': -1
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            users: {
+              $push: {
+                _id: '$_id',
+                username: '$username',
+                xp: '$xp',
+                streakDays: '$streak.days'
+              }
+            }
+          }
+        },
+        {
+          $unwind: {
+            path: '$users',
+            includeArrayIndex: 'rank'
+          }
+        },
+        {
+          $match: {
+            'users._id': userId
+          }
+        }
+      ]);
+  
+      // Format the response
+      const rankings = leaderboardData.map(user => ({
+        user: {
+          _id: user._id,
+          username: user.username,
+          streak: {
+            days: user.streak?.days || 0,
+            lastActivity: user.streak?.lastActivity
+          }
+        },
+        xp: user.xp || 0
+      }));
+  
+      // Get user's rank (if found)
+      const userRank = userRankData.length > 0 ? {
+        userId: userId,
+        rank: userRankData[0].rank + 1,
+        xp: userRankData[0].users.xp,
+        streakDays: userRankData[0].users.streakDays
+      } : null;
+  
+      return res.status(200).json({
+        success: true,
+        rankings,
+        userRank
+      });
+  
+    } catch (error) {
+      console.error('Error fetching leaderboard data:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch leaderboard data',
+        error: error.message
+      });
+    }
+  };
+
+
+module.exports = { getUserProgress,postStreak ,getStreak,GetDetailedProgress,getLeaderboardData};

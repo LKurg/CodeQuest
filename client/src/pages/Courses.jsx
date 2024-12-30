@@ -38,18 +38,18 @@ const CourseCard = ({ course, onEnroll, onContinueLearning }) => {
         {/* Action Button */}
         <div className="mt-6 border-t border-gray-100 pt-4">
           {course.isEnrolled ? (
-            <button 
-              className="w-full flex items-center justify-between text-teal-600 hover:text-teal-800 font-semibold group/button transition-colors"
-              onClick={() => onContinueLearning(course._id)}
-            >
-              <span className="group-hover/button:translate-x-1 transition-transform">
-                Continue Learning
-              </span>
-              <FontAwesomeIcon 
-                icon={faChevronRight} 
-                className="opacity-0 group-hover/button:opacity-100 transition-opacity" 
-              />
-            </button>
+      <button 
+      className="w-full flex items-center justify-between text-teal-600 hover:text-teal-800 font-semibold group/button transition-colors"
+      onClick={() => onContinueLearning(course._id)}
+    >
+      <span className="group-hover/button:translate-x-1 transition-transform">
+        Continue Learning
+      </span>
+      <FontAwesomeIcon 
+        icon={faChevronRight} 
+        className="opacity-0 group-hover/button:opacity-100 transition-opacity" 
+      />
+    </button>
           ) : (
             <button
               onClick={() => onEnroll(course._id)}
@@ -103,8 +103,13 @@ function Courses() {
         }
 
         const data = await response.json();
-        setCourses(data);
-        console.log(data);
+        console.log('this is the data:',data);
+        // Transform the data to include firstLessonId if needed
+        const transformedCourses = data.map(course => ({
+          ...course,
+          currentLessonId: course.currentLessonId || course.firstLessonId
+        }));
+        setCourses(transformedCourses);
         setLoading(false);
       } catch (err) {
         setError(err.message || 'Failed to fetch courses.');
@@ -113,7 +118,7 @@ function Courses() {
     };
 
     fetchCourses();
-  }, [authState?.token]); 
+  }, [authState?.token]);
 
   const handleEnroll = async (courseId) => {
     try {
@@ -153,8 +158,16 @@ function Courses() {
   };
 
   const handleContinueLearning = (courseId) => {
-    // Navigate to the course learning page
-    navigate(`/course/learn/${courseId}`);
+    // Find the course
+    const course = courses.find(c => c._id === courseId);
+    
+    // Get the first section's first lesson ID
+    const firstLessonId = course?.sections?.[0]?.lessons?.[0]?._id;
+    
+    // Navigate to the course learning page with the first lesson ID
+    if (firstLessonId) {
+      navigate(`/course/learn/${courseId}/${firstLessonId}`);
+    }
   };
 
   if (loading) return <div>Loading...</div>;

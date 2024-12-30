@@ -30,52 +30,38 @@ const ProgressSchema = new mongoose.Schema({
 });
 
 const QuizResultSchema = new mongoose.Schema({
-    courseId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Course', 
-        required: true 
-    },
-    quizId: { 
-        type: mongoose.Schema.Types.ObjectId, // Reference to the Quiz model
-        ref: 'Quiz', 
-        required: true 
-    },
-    score: { 
-        type: Number, 
-        required: true 
-    },
-    xpEarned: { 
-        type: Number, 
-        default: 0 
-    },
-    attemptedAt: { 
-        type: Date, 
-        default: Date.now 
-    },
-    incorrectAnswers: [{
-        questionId: { 
-            type: mongoose.Schema.Types.ObjectId, 
-            ref: 'Question',  // Assuming Question is another model or can be a reference to Quiz.questions
-            required: true
+    courseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course',
+        required: function () {
+            return this.quizResults && this.quizResults.length > 0;
         },
-        userAnswer: { 
-            type: String,  // Store the user's incorrect answer
-            required: true
-        },
-        correctAnswer: { 
-            type: String,  // Store the correct answer for comparison
-            required: true
-        },
-        explanation: { 
-            type: String, 
-            required: false
-        },
-    }],
-    reattempts: { 
-        type: Number, 
-        default: 0  // Track number of reattempts for this quiz
     },
+    quizId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Quiz',
+        required: function () {
+            return this.quizResults && this.quizResults.length > 0;
+        },
+    },
+    score: { type: Number, required: false },
+    xpEarned: { type: Number, default: 0 },
+    attemptedAt: { type: Date, default: Date.now },
+    incorrectAnswers: [
+        {
+            questionId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Question',
+                required: false,
+            },
+            userAnswer: { type: String, required: false },
+            correctAnswer: { type: String, required: false },
+            explanation: { type: String, required: false },
+        },
+    ],
+    reattempts: { type: Number, default: 0 },
 });
+
 
 
 // Enrolled course schema

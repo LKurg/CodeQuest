@@ -43,6 +43,9 @@ const MainLayout = ({ children }) => {
                   <a href="/games" className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
               My Games
                   </a>
+                  <a href="/client/leaderboard" className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
+              Leader board
+                  </a>
                   <button
                     onClick={logout}
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium ml-4"

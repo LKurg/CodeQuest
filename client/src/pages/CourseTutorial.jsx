@@ -10,6 +10,7 @@ import CourseLayout from '../Layout/CourseLayout';
 
 function CourseTutorial() {
   const { courseId, lessonId } = useParams();
+
   const navigate = useNavigate();
   
   // State management
@@ -43,7 +44,7 @@ function CourseTutorial() {
   
         const progressData = await progressResponse.json();
         const courseData = await courseResponse.json();
-  
+  console.log('this is the course data:',courseData);
         // Update states with fetched data
         setUserSubscription(courseData.subscription);
         setCourseData(courseData.course);
@@ -114,7 +115,7 @@ function CourseTutorial() {
     if (currentLessonIndex < currentSection.lessons.length - 1) {
       const nextLesson = currentSection.lessons[currentLessonIndex + 1];
       setActiveLesson(nextLesson._id);
-      navigate(`/course/${courseId}/${nextLesson._id}`);
+      navigate(`/course/learn/${courseId}/${nextLesson._id}`);
     }
     // If no more lessons in current section, try to move to next section
     else if (currentSectionIndex < courseData.sections.length - 1) {
@@ -124,7 +125,7 @@ function CourseTutorial() {
       if (nextSection.lessons?.length > 0) {
         const firstLesson = nextSection.lessons[0];
         setActiveLesson(firstLesson._id);
-        navigate(`/course/${courseId}/${firstLesson._id}`);
+        navigate(`/course/learn/${courseId}/${firstLesson._id}`);
       }
     }
   };

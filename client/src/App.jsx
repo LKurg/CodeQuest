@@ -29,6 +29,7 @@ import Room from './pages/Room/Room.jsx';
 import Games from './pages/Games.jsx';
 import Ranking from './pages/Ranking.jsx';
 import CodeEditor from './CodeEditor.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
 
 function App() {
   return (
@@ -79,6 +80,16 @@ function App() {
         />
 
         <Route
+       
+          path="/client/leaderboard"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <Leaderboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/subscription/success"
           element={
             <ProtectedRoute requiredRole="user">
@@ -115,7 +126,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+      
         <Route
           path="/course/quiz/:courseId/:lessonId"
           element={
